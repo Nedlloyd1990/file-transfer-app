@@ -109,7 +109,7 @@
         // Connect to WebSocket server
         function connectWebSocket() {
             socket = new WebSocket('wss://file-transfer-server.onrender.com');
-            socket.binaryType = 'arraybuffer'; // Default is 'blob', but we’ll handle as string
+            socket.binaryType = 'arraybuffer'; // Handle as binary, decode to string
 
             socket.onopen = () => {
                 status.textContent = 'Connected! Send a file to start.';
@@ -117,14 +117,12 @@
             };
 
             socket.onmessage = (event) => {
-                // Convert incoming data to string explicitly
                 console.log('Raw data received (type):', typeof event.data, event.data);
                 let messageData;
                 if (typeof event.data === 'string') {
-                    messageData = event.data; // Already a string
+                    messageData = event.data;
                 } else {
-                    // Convert ArrayBuffer to string
-                    messageData = new TextDecoder().decode(event.data);
+                    messageData = new TextDecoder('utf-8').decode(event.data);
                 }
                 console.log('Decoded message:', messageData);
                 try {
@@ -147,23 +145,18 @@
             };
         }
 
-        // Send file to server
+        // Send file metadata (no content for now)
         function sendFile() {
             const file = fileInput.files[0];
             if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const fileData = {
-                        fileName: file.name,
-                        fileSize: file.size,
-                        fileContent: e.target.result // Base64 encoded file
-                    };
-                    const jsonString = JSON.stringify(fileData);
-                    console.log('Sending:', jsonString);
-                    socket.send(jsonString); // Send as plain string
-                    displayMessage(file.name, file.size, true);
+                const fileData = {
+                    fileName: file.name,
+                    fileSize: file.size
                 };
-                reader.readAsDataURL(file); // Convert file to Base64
+                const jsonString = JSON.stringify(fileData);
+                console.log('Sending:', jsonString);
+                socket.send(jsonString); // Send as plain string
+                displayMessage(file.name, file.size, true);
                 fileInput.value = ''; // Reset input
             }
         }
