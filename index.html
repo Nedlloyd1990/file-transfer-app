@@ -106,7 +106,7 @@
         const status = document.getElementById('status');
         let socket;
 
-        // Connect to WebSocket server (replace with your server URL after deployment)
+        // Connect to WebSocket server
         function connectWebSocket() {
             socket = new WebSocket('wss://file-transfer-server.onrender.com');
 
@@ -115,16 +115,24 @@
             };
 
             socket.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                displayMessage(data.fileName, data.fileSize, false);
+                // Handle incoming message (expecting a JSON string)
+                console.log('Raw data received:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('Parsed data:', data);
+                    displayMessage(data.fileName, data.fileSize, false);
+                } catch (error) {
+                    console.log('Parse error:', error);
+                }
             };
 
             socket.onclose = () => {
                 status.textContent = 'Disconnected from server.';
             };
 
-            socket.onerror = () => {
+            socket.onerror = (error) => {
                 status.textContent = 'Error connecting to server.';
+                console.log('WebSocket error:', error);
             };
         }
 
@@ -139,7 +147,8 @@
                         fileSize: file.size,
                         fileContent: e.target.result // Base64 encoded file
                     };
-                    socket.send(JSON.stringify(fileData));
+                    console.log('Sending:', fileData);
+                    socket.send(JSON.stringify(fileData)); // Send as JSON string
                     displayMessage(file.name, file.size, true);
                 };
                 reader.readAsDataURL(file); // Convert file to Base64
@@ -155,7 +164,7 @@
             const sizeKB = (fileSize / 1024).toFixed(2);
             messageDiv.textContent = `${fileName} (${sizeKB} KB)`;
             chatArea.appendChild(messageDiv);
-            chatArea.scrollTop = chatArea.scrollHeight; // Auto-scroll to bottom
+            chatArea.scrollTop = chatArea.scrollHeight; // Auto-scroll
         }
 
         // Start WebSocket connection
