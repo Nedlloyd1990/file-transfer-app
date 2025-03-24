@@ -120,8 +120,8 @@
             font-size: 14px;
             outline: none;
             transition: border-color 0.2s ease;
-            min-width: 0; /* Ensures it shrinks properly */
-            background-color: #f9f9f9; /* Slight tint for visibility */
+            min-width: 0;
+            background-color: #f9f9f9;
         }
 
         #textInput:focus {
@@ -159,6 +159,17 @@
             color: #666;
             font-size: 13px;
             background-color: #f1f3f4;
+        }
+
+        .file-message {
+            position: relative;
+        }
+
+        .file-message::after {
+            content: " (Expires in 10s)";
+            font-size: 12px;
+            color: #ea4335;
+            margin-left: 8px;
         }
     </style>
 </head>
@@ -270,10 +281,10 @@
             chatArea.scrollTop = chatArea.scrollHeight; // Auto-scroll
         }
 
-        // Display file message with downloadable link
+        // Display file message with downloadable link and 10-second deletion
         function displayFileMessage(fileName, fileSize, fileContent, isSent) {
             const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message');
+            messageDiv.classList.add('message', 'file-message');
             messageDiv.classList.add(isSent ? 'sent' : 'received');
             const sizeKB = (fileSize / 1024).toFixed(2);
 
@@ -291,6 +302,14 @@
             messageDiv.appendChild(link);
             chatArea.appendChild(messageDiv);
             chatArea.scrollTop = chatArea.scrollHeight; // Auto-scroll
+
+            // Delete the file message after 10 seconds
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                    console.log(`Deleted file message: ${fileName}`);
+                }
+            }, 10000); // 10 seconds
         }
 
         // Start WebSocket connection
