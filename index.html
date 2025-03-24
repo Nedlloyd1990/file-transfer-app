@@ -75,6 +75,11 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
         .sent {
             background-color: #e8f0fe;
             color: #1a73e8;
@@ -209,6 +214,7 @@
             display: none;
             flex-direction: column;
             gap: 15px;
+            width: 300px;
         }
 
         .file-options-panel h3 {
@@ -217,7 +223,7 @@
             color: #1a73e8;
         }
 
-        .file-options-panel select, .file-options-panel input[type="number"] {
+        .file-options-panel select, .file-options-panel input {
             padding: 10px;
             border: 1px solid #e0e0e0;
             border-radius: 6px;
@@ -239,6 +245,19 @@
         .file-options-panel button:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+        }
+
+        .thumbnail {
+            max-width: 50px;
+            max-height: 50px;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .read-receipt {
+            font-size: 10px;
+            color: #34c759;
+            margin-left: 8px;
         }
     </style>
 </head>
@@ -274,6 +293,8 @@
             <option value="time">Delete After Time</option>
         </select>
         <input type="number" id="deleteTime" min="1" placeholder="Time (s)" value="10">
+        <input type="text" id="filePassword" placeholder="Password (optional)">
+        <input type="datetime-local" id="scheduleTime" placeholder="Schedule Send (optional)">
         <button onclick="sendFileWithOptions()">Send</button>
     </div>
 
@@ -285,6 +306,8 @@
         const fileMode = document.getElementById('fileMode');
         const deleteMode = document.getElementById('deleteMode');
         const deleteTime = document.getElementById('deleteTime');
+        const filePassword = document.getElementById('filePassword');
+        const scheduleTime = document.getElementById('scheduleTime');
         const status = document.getElementById('status');
         const statusDot = document.querySelector('.status-dot');
         let socket;
@@ -313,6 +336,8 @@
                         displayFileMessage(data, false);
                     } else if (data.recallId) {
                         recallMessage(data.recallId);
+                    } else if (data.readReceiptId) {
+                        updateReadReceipt(data.readReceiptId);
                     }
                 } catch (error) {
                     console.log('Parse error:', error);
@@ -353,12 +378,13 @@
             }
         }
 
-        // Send file with selected options
+        // Send file with options
         function sendFileWithOptions() {
             if (selectedFile) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const messageId = messageIdCounter++;
+                    const scheduleDate = scheduleTime.value ? new Date(scheduleTime.value).getTime() : null;
                     const fileData = {
                         fileName: selectedFile.name,
                         fileSize: selectedFile.size,
@@ -366,14 +392,27 @@
                         mode: fileMode.value,
                         deleteMode: deleteMode.value,
                         deleteTime: deleteMode.value === 'time' ? (parseInt(deleteTime.value) || 10) * 1000 : null,
-                        messageId: messageId
+                        messageId: messageId,
+                        password: filePassword.value || null,
+                        scheduleTime: scheduleDate
                     };
-                    const jsonString = JSON.stringify(fileData);
-                    console.log('Sending file:', jsonString);
-                    socket.send(jsonString);
-                    displayFileMessage(fileData, true);
+
+                    if (scheduleDate && scheduleDate > Date.now()) {
+                        const delay = scheduleDate - Date.now();
+                        setTimeout(() => {
+                            socket.send(JSON.stringify(fileData));
+                            displayFileMessage(fileData, true);
+                        }, delay);
+                        console.log(`Scheduled file: ${fileData.fileName} for ${new Date(scheduleDate)}`);
+                    } else {
+                        socket.send(JSON.stringify(fileData));
+                        displayFileMessage(fileData, true);
+                    }
+
                     fileOptionsPanel.style.display = 'none';
                     fileInput.value = '';
+                    filePassword.value = '';
+                    scheduleTime.value = '';
                     selectedFile = null;
                 };
                 reader.readAsDataURL(selectedFile);
@@ -390,7 +429,7 @@
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
-        // Display file message with countdown
+        // Display file message with countdown and unique features
         function displayFileMessage(data, isSent) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', 'file-message');
@@ -399,22 +438,39 @@
             const sizeKB = (data.fileSize / 1024).toFixed(2);
 
             const content = document.createElement('span');
+            const actionHandler = () => {
+                if (data.password) {
+                    const enteredPassword = prompt(`Enter password for ${data.fileName}:`);
+                    if (enteredPassword !== data.password) {
+                        alert('Incorrect password');
+                        return;
+                    }
+                }
+                if (data.mode === 'download') {
+                    window.location.href = data.fileContent;
+                } else {
+                    showPreview(data.fileContent, data.fileName);
+                }
+                if (!isSent) socket.send(JSON.stringify({ readReceiptId: data.messageId }));
+                if (data.deleteMode === 'once') {
+                    setTimeout(() => removeMessage(messageDiv, data.fileName), 100);
+                }
+            };
+
             if (data.mode === 'download') {
                 const link = document.createElement('a');
                 link.classList.add('file-link');
-                link.textContent = `${data.fileName} (${sizeKB} KB)`;
-                link.href = data.fileContent;
-                link.download = data.fileName;
+                link.textContent = `${data.fileName} (${sizeKB} KB)${data.password ? ' 🔒' : ''}`;
+                link.onclick = (e) => { e.preventDefault(); actionHandler(); };
                 content.appendChild(link);
             } else if (data.mode === 'view') {
                 content.classList.add('view-link');
-                content.textContent = `${data.fileName} (${sizeKB} KB)`;
-                content.onclick = () => {
-                    showPreview(data.fileContent, data.fileName, messageDiv);
-                    if (data.deleteMode === 'once') {
-                        setTimeout(() => removeMessage(messageDiv, data.fileName), 100);
-                    }
-                };
+                content.textContent = `${data.fileName} (${sizeKB} KB)${data.password ? ' 🔒' : ''}`;
+                content.onclick = actionHandler;
+                const thumbnail = document.createElement('img');
+                thumbnail.classList.add('thumbnail');
+                thumbnail.src = data.fileName.endsWith('.txt') ? 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h6v6h6v10H6z"/></svg>' : data.fileContent;
+                content.appendChild(thumbnail);
             }
 
             const timer = document.createElement('span');
@@ -422,8 +478,12 @@
             messageDiv.appendChild(content);
             messageDiv.appendChild(timer);
 
+            const receipt = document.createElement('span');
+            receipt.classList.add('read-receipt');
+            messageDiv.appendChild(receipt);
+
             if (data.deleteMode === 'time' && data.deleteTime) {
-                let timeLeft = data.deleteTime; // In milliseconds
+                let timeLeft = data.deleteTime;
                 timer.textContent = ` (Expires in ${Math.floor(timeLeft / 1000)}s)`;
                 const countdown = setInterval(() => {
                     timeLeft -= 1000;
@@ -431,8 +491,13 @@
                         timer.textContent = ` (Expires in ${Math.floor(timeLeft / 1000)}s)`;
                     } else if (messageDiv.parentNode) {
                         clearInterval(countdown);
-                        messageDiv.innerHTML = `<span class="expired">${data.fileName} (Expired)</span>`;
-                        console.log(`Expired file: ${data.fileName}`);
+                        messageDiv.style.animation = 'fadeOut 0.5s ease forwards';
+                        setTimeout(() => {
+                            if (messageDiv.parentNode) {
+                                messageDiv.innerHTML = `<span class="expired">${data.fileName} (Expired)</span>`;
+                                console.log(`Expired file: ${data.fileName}`);
+                            }
+                        }, 500);
                     }
                 }, 1000);
             } else if (data.deleteMode === 'once') {
@@ -446,6 +511,8 @@
                 recallBtn.onclick = () => {
                     if (data.deleteMode === 'time') clearInterval(countdown);
                     recallMessage(data.messageId);
+                    messageDiv.style.animation = 'fadeOut 0.5s ease forwards';
+                    setTimeout(() => removeMessage(messageDiv, data.fileName), 500);
                 };
                 messageDiv.appendChild(recallBtn);
             }
@@ -485,6 +552,15 @@
                     console.log(`Recalled message ID: ${messageId}`);
                 }
             });
+        }
+
+        // Update read receipt
+        function updateReadReceipt(messageId) {
+            const messageDiv = chatArea.querySelector(`[data-message-id="${messageId}"]`);
+            if (messageDiv) {
+                const receipt = messageDiv.querySelector('.read-receipt');
+                receipt.textContent = '✓ Read';
+            }
         }
 
         // Start WebSocket connection
