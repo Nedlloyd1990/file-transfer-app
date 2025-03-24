@@ -112,22 +112,34 @@
 
             socket.onopen = () => {
                 status.textContent = 'Connected! Send a file to start.';
+                console.log('WebSocket connected');
             };
 
             socket.onmessage = (event) => {
-                // Handle incoming message (expecting a JSON string)
+                // Ensure event.data is a string before parsing
                 console.log('Raw data received:', event.data);
-                try {
-                    const data = JSON.parse(event.data);
-                    console.log('Parsed data:', data);
-                    displayMessage(data.fileName, data.fileSize, false);
-                } catch (error) {
-                    console.log('Parse error:', error);
+                if (typeof event.data === 'string') {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('Parsed data:', data);
+                        displayMessage(data.fileName, data.fileSize, false);
+                    } catch (error) {
+                        console.log('Parse error:', error);
+                    }
+                } else {
+                    console.log('Received non-string data:', event.data);
+                    // Handle Blob or binary data if needed (optional)
+                    event.data.text().then(text => {
+                        const data = JSON.parse(text);
+                        console.log('Parsed Blob data:', data);
+                        displayMessage(data.fileName, data.fileSize, false);
+                    }).catch(error => console.log('Blob parse error:', error));
                 }
             };
 
             socket.onclose = () => {
                 status.textContent = 'Disconnected from server.';
+                console.log('WebSocket disconnected');
             };
 
             socket.onerror = (error) => {
