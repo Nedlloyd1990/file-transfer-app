@@ -109,6 +109,7 @@
         // Connect to WebSocket server
         function connectWebSocket() {
             socket = new WebSocket('wss://file-transfer-server.onrender.com');
+            socket.binaryType = 'arraybuffer'; // Default is 'blob', but we’ll handle as string
 
             socket.onopen = () => {
                 status.textContent = 'Connected! Send a file to start.';
@@ -116,24 +117,22 @@
             };
 
             socket.onmessage = (event) => {
-                // Ensure event.data is a string before parsing
-                console.log('Raw data received:', event.data);
+                // Convert incoming data to string explicitly
+                console.log('Raw data received (type):', typeof event.data, event.data);
+                let messageData;
                 if (typeof event.data === 'string') {
-                    try {
-                        const data = JSON.parse(event.data);
-                        console.log('Parsed data:', data);
-                        displayMessage(data.fileName, data.fileSize, false);
-                    } catch (error) {
-                        console.log('Parse error:', error);
-                    }
+                    messageData = event.data; // Already a string
                 } else {
-                    console.log('Received non-string data:', event.data);
-                    // Handle Blob or binary data if needed (optional)
-                    event.data.text().then(text => {
-                        const data = JSON.parse(text);
-                        console.log('Parsed Blob data:', data);
-                        displayMessage(data.fileName, data.fileSize, false);
-                    }).catch(error => console.log('Blob parse error:', error));
+                    // Convert ArrayBuffer to string
+                    messageData = new TextDecoder().decode(event.data);
+                }
+                console.log('Decoded message:', messageData);
+                try {
+                    const data = JSON.parse(messageData);
+                    console.log('Parsed data:', data);
+                    displayMessage(data.fileName, data.fileSize, false);
+                } catch (error) {
+                    console.log('Parse error:', error);
                 }
             };
 
@@ -159,8 +158,9 @@
                         fileSize: file.size,
                         fileContent: e.target.result // Base64 encoded file
                     };
-                    console.log('Sending:', fileData);
-                    socket.send(JSON.stringify(fileData)); // Send as JSON string
+                    const jsonString = JSON.stringify(fileData);
+                    console.log('Sending:', jsonString);
+                    socket.send(jsonString); // Send as plain string
                     displayMessage(file.name, file.size, true);
                 };
                 reader.readAsDataURL(file); // Convert file to Base64
