@@ -223,6 +223,12 @@
             color: #1a73e8;
         }
 
+        .file-options-panel label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
         .file-options-panel select, .file-options-panel input {
             padding: 10px;
             border: 1px solid #e0e0e0;
@@ -283,17 +289,22 @@
 
     <div class="file-options-panel" id="fileOptionsPanel">
         <h3>File Options</h3>
+        <label>Mode:</label>
         <select id="fileMode">
             <option value="download">Download</option>
             <option value="view">View Only</option>
         </select>
+        <label>Delete Mode:</label>
         <select id="deleteMode">
             <option value="none">No Auto-Delete</option>
             <option value="once">Delete After View</option>
             <option value="time">Delete After Time</option>
         </select>
+        <label>Expiration Time (seconds):</label>
         <input type="number" id="deleteTime" min="1" placeholder="Time (s)" value="10">
+        <label>Password (optional):</label>
         <input type="text" id="filePassword" placeholder="Password (optional)">
+        <label>Schedule Send (optional):</label>
         <input type="datetime-local" id="scheduleTime" placeholder="Schedule Send (optional)">
         <button onclick="sendFileWithOptions()">Send</button>
     </div>
