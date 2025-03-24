@@ -29,7 +29,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #1a73e8, #185abc);
+            background: linear-gradient(135deg, #1a73e8, #185abc); /* Customizable via branding */
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -184,7 +184,7 @@
             margin-left: 8px;
         }
 
-        .recall-btn {
+        .recall-btn, .annotate-btn {
             background: #ea4335;
             color: white;
             padding: 4px 8px;
@@ -196,9 +196,13 @@
             transition: transform 0.2s ease;
         }
 
-        .recall-btn:hover {
+        .annotate-btn {
+            background: #34c759;
+        }
+
+        .recall-btn:hover, .annotate-btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 2px 6px rgba(234, 67, 53, 0.3);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
 
         .file-options-panel {
@@ -265,12 +269,18 @@
             color: #34c759;
             margin-left: 8px;
         }
+
+        .version-history {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <span class="logo">FileSync Pro</span>
+            <span class="logo">FileSync Pro</span> <!-- Replace with custom logo via branding -->
             <span class="status-dot"></span>
         </div>
         <div class="chat-area" id="chatArea"></div>
@@ -302,10 +312,12 @@
         </select>
         <label>Expiration Time (seconds):</label>
         <input type="number" id="deleteTime" min="1" placeholder="Time (s)" value="10">
-        <label>Password (optional):</label>
-        <input type="text" id="filePassword" placeholder="Password (optional)">
-        <label>Schedule Send (optional):</label>
-        <input type="datetime-local" id="scheduleTime" placeholder="Schedule Send (optional)">
+        <label>Encrypt File:</label>
+        <input type="checkbox" id="encryptFile">
+        <label>Session Expiration (minutes):</label>
+        <input type="number" id="sessionTime" min="1" placeholder="Session Time (m)">
+        <label>Version Number (optional):</label>
+        <input type="number" id="versionNumber" min="1" placeholder="Version">
         <button onclick="sendFileWithOptions()">Send</button>
     </div>
 
@@ -317,13 +329,15 @@
         const fileMode = document.getElementById('fileMode');
         const deleteMode = document.getElementById('deleteMode');
         const deleteTime = document.getElementById('deleteTime');
-        const filePassword = document.getElementById('filePassword');
-        const scheduleTime = document.getElementById('scheduleTime');
+        const encryptFile = document.getElementById('encryptFile');
+        const sessionTime = document.getElementById('sessionTime');
+        const versionNumber = document.getElementById('versionNumber');
         const status = document.getElementById('status');
         const statusDot = document.querySelector('.status-dot');
         let socket;
         let messageIdCounter = 0;
         let selectedFile = null;
+        let fileVersions = {}; // Store file versions
 
         // Connect to WebSocket server
         function connectWebSocket() {
@@ -347,8 +361,8 @@
                         displayFileMessage(data, false);
                     } else if (data.recallId) {
                         recallMessage(data.recallId);
-                    } else if (data.readReceiptId) {
-                        updateReadReceipt(data.readReceiptId);
+                    } else if (data.annotation) {
+                        displayAnnotation(data);
                     }
                 } catch (error) {
                     console.log('Parse error:', error);
@@ -389,41 +403,51 @@
             }
         }
 
+        // Simple encryption (for demo purposes)
+        function encryptContent(content) {
+            return btoa(content); // Base64 encode as a placeholder
+        }
+
+        function decryptContent(encryptedContent) {
+            return atob(encryptedContent);
+        }
+
         // Send file with options
         function sendFileWithOptions() {
             if (selectedFile) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const messageId = messageIdCounter++;
-                    const scheduleDate = scheduleTime.value ? new Date(scheduleTime.value).getTime() : null;
+                    const fileContent = e.target.result;
+                    const encryptedContent = encryptFile.checked ? encryptContent(fileContent.split(',')[1]) : fileContent;
+                    const sessionExpiry = sessionTime.value ? parseInt(sessionTime.value) * 60 * 1000 : null;
                     const fileData = {
                         fileName: selectedFile.name,
                         fileSize: selectedFile.size,
-                        fileContent: e.target.result,
+                        fileContent: encryptedContent,
                         mode: fileMode.value,
                         deleteMode: deleteMode.value,
                         deleteTime: deleteMode.value === 'time' ? (parseInt(deleteTime.value) || 10) * 1000 : null,
                         messageId: messageId,
-                        password: filePassword.value || null,
-                        scheduleTime: scheduleDate
+                        encrypted: encryptFile.checked,
+                        sessionTime: sessionExpiry,
+                        version: versionNumber.value || null
                     };
 
-                    if (scheduleDate && scheduleDate > Date.now()) {
-                        const delay = scheduleDate - Date.now();
+                    socket.send(JSON.stringify(fileData));
+                    displayFileMessage(fileData, true);
+
+                    if (sessionExpiry) {
                         setTimeout(() => {
-                            socket.send(JSON.stringify(fileData));
-                            displayFileMessage(fileData, true);
-                        }, delay);
-                        console.log(`Scheduled file: ${fileData.fileName} for ${new Date(scheduleDate)}`);
-                    } else {
-                        socket.send(JSON.stringify(fileData));
-                        displayFileMessage(fileData, true);
+                            chatArea.innerHTML = '';
+                            console.log('Chat session expired and wiped');
+                        }, sessionExpiry);
                     }
 
                     fileOptionsPanel.style.display = 'none';
                     fileInput.value = '';
-                    filePassword.value = '';
-                    scheduleTime.value = '';
+                    sessionTime.value = '';
+                    versionNumber.value = '';
                     selectedFile = null;
                 };
                 reader.readAsDataURL(selectedFile);
@@ -440,47 +464,40 @@
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
-        // Display file message with countdown and unique features
+        // Display file message with unique features
         function displayFileMessage(data, isSent) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', 'file-message');
             messageDiv.classList.add(isSent ? 'sent' : 'received');
             messageDiv.dataset.messageId = data.messageId;
             const sizeKB = (data.fileSize / 1024).toFixed(2);
+            const fileContent = data.encrypted ? `data:${data.fileName.split('.').pop()};base64,${decryptContent(data.fileContent)}` : data.fileContent;
 
             const content = document.createElement('span');
             const actionHandler = () => {
-                if (data.password) {
-                    const enteredPassword = prompt(`Enter password for ${data.fileName}:`);
-                    if (enteredPassword !== data.password) {
-                        alert('Incorrect password');
-                        return;
-                    }
+                if (data.encrypted) {
+                    alert('File is encrypted. Use the one-time decryption key provided by sender.');
                 }
                 if (data.mode === 'download') {
-                    window.location.href = data.fileContent;
+                    window.location.href = fileContent;
                 } else {
-                    showPreview(data.fileContent, data.fileName);
-                }
-                if (!isSent) socket.send(JSON.stringify({ readReceiptId: data.messageId }));
-                if (data.deleteMode === 'once') {
-                    setTimeout(() => removeMessage(messageDiv, data.fileName), 100);
+                    showPreview(fileContent, data.fileName);
                 }
             };
 
             if (data.mode === 'download') {
                 const link = document.createElement('a');
                 link.classList.add('file-link');
-                link.textContent = `${data.fileName} (${sizeKB} KB)${data.password ? ' 🔒' : ''}`;
+                link.textContent = `${data.fileName} (${sizeKB} KB)${data.encrypted ? ' 🔐' : ''}`;
                 link.onclick = (e) => { e.preventDefault(); actionHandler(); };
                 content.appendChild(link);
             } else if (data.mode === 'view') {
                 content.classList.add('view-link');
-                content.textContent = `${data.fileName} (${sizeKB} KB)${data.password ? ' 🔒' : ''}`;
+                content.textContent = `${data.fileName} (${sizeKB} KB)${data.encrypted ? ' 🔐' : ''}`;
                 content.onclick = actionHandler;
                 const thumbnail = document.createElement('img');
                 thumbnail.classList.add('thumbnail');
-                thumbnail.src = data.fileName.endsWith('.txt') ? 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h6v6h6v10H6z"/></svg>' : data.fileContent;
+                thumbnail.src = data.fileName.endsWith('.txt') ? 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h6v6h6v10H6z"/></svg>' : fileContent;
                 content.appendChild(thumbnail);
             }
 
@@ -489,9 +506,17 @@
             messageDiv.appendChild(content);
             messageDiv.appendChild(timer);
 
-            const receipt = document.createElement('span');
-            receipt.classList.add('read-receipt');
-            messageDiv.appendChild(receipt);
+            if (data.version) {
+                const versionSpan = document.createElement('span');
+                versionSpan.classList.add('version-history');
+                versionSpan.textContent = `Version ${data.version}`;
+                if (!fileVersions[data.fileName]) fileVersions[data.fileName] = [];
+                fileVersions[data.fileName].push({ version: data.version, messageId: data.messageId });
+                if (fileVersions[data.fileName].length > 1) {
+                    versionSpan.textContent += ` (Previous: ${fileVersions[data.fileName].map(v => `v${v.version}`).join(', ')})`;
+                }
+                messageDiv.appendChild(versionSpan);
+            }
 
             if (data.deleteMode === 'time' && data.deleteTime) {
                 let timeLeft = data.deleteTime;
@@ -503,12 +528,7 @@
                     } else if (messageDiv.parentNode) {
                         clearInterval(countdown);
                         messageDiv.style.animation = 'fadeOut 0.5s ease forwards';
-                        setTimeout(() => {
-                            if (messageDiv.parentNode) {
-                                messageDiv.innerHTML = `<span class="expired">${data.fileName} (Expired)</span>`;
-                                console.log(`Expired file: ${data.fileName}`);
-                            }
-                        }, 500);
+                        setTimeout(() => removeMessage(messageDiv, data.fileName), 500);
                     }
                 }, 1000);
             } else if (data.deleteMode === 'once') {
@@ -526,6 +546,12 @@
                     setTimeout(() => removeMessage(messageDiv, data.fileName), 500);
                 };
                 messageDiv.appendChild(recallBtn);
+            } else if (data.mode === 'view' && (data.fileName.endsWith('.jpg') || data.fileName.endsWith('.pdf'))) {
+                const annotateBtn = document.createElement('button');
+                annotateBtn.classList.add('annotate-btn');
+                annotateBtn.textContent = 'Annotate';
+                annotateBtn.onclick = () => annotateFile(fileContent, data.fileName, data.messageId);
+                messageDiv.appendChild(annotateBtn);
             }
 
             chatArea.appendChild(messageDiv);
@@ -542,6 +568,25 @@
                 previewWindow.document.write(`<img src="${fileContent}" style="max-width: 100%;">`);
             }
             previewWindow.document.title = fileName;
+        }
+
+        // Annotate file
+        function annotateFile(fileContent, fileName, messageId) {
+            const annotation = prompt('Add your annotation:');
+            if (annotation) {
+                const annotationData = { annotation, fileName, messageId };
+                socket.send(JSON.stringify(annotationData));
+                displayAnnotation(annotationData);
+            }
+        }
+
+        // Display annotation
+        function displayAnnotation(data) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', isSent ? 'sent' : 'received');
+            messageDiv.textContent = `Annotation for ${data.fileName}: ${data.annotation}`;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
         }
 
         // Remove message from chat
@@ -565,17 +610,15 @@
             });
         }
 
-        // Update read receipt
-        function updateReadReceipt(messageId) {
-            const messageDiv = chatArea.querySelector(`[data-message-id="${messageId}"]`);
-            if (messageDiv) {
-                const receipt = messageDiv.querySelector('.read-receipt');
-                receipt.textContent = '✓ Read';
-            }
+        // Apply custom branding (example)
+        function applyBranding() {
+            document.querySelector('.header').style.background = 'linear-gradient(135deg, #ff5733, #c70039)'; // Example company color
+            document.querySelector('.logo').textContent = 'YourCompany Sync'; // Example company name
         }
 
-        // Start WebSocket connection
+        // Start WebSocket connection and apply branding
         connectWebSocket();
+        applyBranding();
     </script>
 </body>
 </html>
