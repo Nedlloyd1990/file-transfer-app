@@ -116,7 +116,7 @@
         .text-input-row {
             display: flex;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
 
         #textInput {
@@ -143,6 +143,7 @@
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         #fileInput {
@@ -168,15 +169,17 @@
         .options {
             display: flex;
             gap: 10px;
+            align-items: center;
             flex-wrap: wrap;
         }
 
         select, input[type="number"] {
-            padding: 8px;
+            padding: 10px;
             border: 1px solid #e0e0e0;
             border-radius: 6px;
-            font-size: 13px;
+            font-size: 14px;
             background-color: #f9f9f9;
+            min-width: 120px;
         }
 
         #status {
@@ -241,7 +244,7 @@
                         <option value="once">Delete After View</option>
                         <option value="time">Delete After Time</option>
                     </select>
-                    <input type="number" id="deleteTime" min="1" placeholder="Time (s)" style="width: 80px;">
+                    <input type="number" id="deleteTime" min="1" placeholder="Time (s)" value="10" style="width: 80px;">
                 </div>
             </div>
         </div>
