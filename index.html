@@ -61,6 +61,12 @@
             margin-right: auto;
         }
 
+        .file-link {
+            color: #00cc66;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
         .input-area {
             display: flex;
             padding: 10px;
@@ -109,7 +115,6 @@
         // Connect to WebSocket server
         function connectWebSocket() {
             socket = new WebSocket('wss://file-transfer-server.onrender.com');
-            socket.binaryType = 'arraybuffer'; // Handle as binary, decode to string
 
             socket.onopen = () => {
                 status.textContent = 'Connected! Send a file to start.';
@@ -118,17 +123,12 @@
 
             socket.onmessage = (event) => {
                 console.log('Raw data received (type):', typeof event.data, event.data);
-                let messageData;
-                if (typeof event.data === 'string') {
-                    messageData = event.data;
-                } else {
-                    messageData = new TextDecoder('utf-8').decode(event.data);
-                }
+                const messageData = event.data.toString('utf8'); // Force string
                 console.log('Decoded message:', messageData);
                 try {
                     const data = JSON.parse(messageData);
                     console.log('Parsed data:', data);
-                    displayMessage(data.fileName, data.fileSize, false);
+                    displayMessage(data.fileName, data.fileSize, data.fileContent, false);
                 } catch (error) {
                     console.log('Parse error:', error);
                 }
@@ -145,29 +145,44 @@
             };
         }
 
-        // Send file metadata (no content for now)
+        // Send file with content
         function sendFile() {
             const file = fileInput.files[0];
             if (file) {
-                const fileData = {
-                    fileName: file.name,
-                    fileSize: file.size
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const fileData = {
+                        fileName: file.name,
+                        fileSize: file.size,
+                        fileContent: e.target.result // Base64 encoded file
+                    };
+                    const jsonString = JSON.stringify(fileData);
+                    console.log('Sending:', jsonString);
+                    socket.send(jsonString); // Send as plain string
+                    displayMessage(file.name, file.size, e.target.result, true);
                 };
-                const jsonString = JSON.stringify(fileData);
-                console.log('Sending:', jsonString);
-                socket.send(jsonString); // Send as plain string
-                displayMessage(file.name, file.size, true);
+                reader.readAsDataURL(file); // Convert file to Base64
                 fileInput.value = ''; // Reset input
             }
         }
 
-        // Display message in chat
-        function displayMessage(fileName, fileSize, isSent) {
+        // Display message with downloadable link
+        function displayMessage(fileName, fileSize, fileContent, isSent) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message');
             messageDiv.classList.add(isSent ? 'sent' : 'received');
             const sizeKB = (fileSize / 1024).toFixed(2);
-            messageDiv.textContent = `${fileName} (${sizeKB} KB)`;
+
+            // Create clickable link for download
+            const link = document.createElement('a');
+            link.classList.add('file-link');
+            link.textContent = `${fileName} (${sizeKB} KB)`;
+            if (fileContent) {
+                link.href = fileContent; // Base64 data URL
+                link.download = fileName; // Set download attribute
+            }
+
+            messageDiv.appendChild(link);
             chatArea.appendChild(messageDiv);
             chatArea.scrollTop = chatArea.scrollHeight; // Auto-scroll
         }
