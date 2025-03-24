@@ -62,9 +62,14 @@
         }
 
         .file-link {
-            color: #00cc66;
+            color: #00cc66; /* Green color for visibility */
             text-decoration: underline;
             cursor: pointer;
+            font-weight: bold; /* Make it stand out */
+        }
+
+        .file-link:hover {
+            color: #00994d; /* Darker green on hover */
         }
 
         .input-area {
@@ -123,7 +128,7 @@
 
             socket.onmessage = (event) => {
                 console.log('Raw data received (type):', typeof event.data, event.data);
-                const messageData = event.data.toString('utf8'); // Force string
+                const messageData = event.data.toString('utf8'); // Ensure string
                 console.log('Decoded message:', messageData);
                 try {
                     const data = JSON.parse(messageData);
@@ -173,13 +178,15 @@
             messageDiv.classList.add(isSent ? 'sent' : 'received');
             const sizeKB = (fileSize / 1024).toFixed(2);
 
-            // Create clickable link for download
             const link = document.createElement('a');
             link.classList.add('file-link');
             link.textContent = `${fileName} (${sizeKB} KB)`;
             if (fileContent) {
                 link.href = fileContent; // Base64 data URL
-                link.download = fileName; // Set download attribute
+                link.download = fileName; // Trigger download with original name
+                console.log('Link created:', { href: link.href, download: fileName });
+            } else {
+                console.log('No fileContent received for:', fileName);
             }
 
             messageDiv.appendChild(link);
