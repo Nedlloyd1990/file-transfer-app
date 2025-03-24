@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp-like File Transfer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 80vh;
+        }
+
+        .header {
+            background-color: #00cc66;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .chat-area {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            background-color: #ece5dd;
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .sent {
+            background-color: #dcf8c6;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .received {
+            background-color: white;
+            margin-right: auto;
+        }
+
+        .input-area {
+            display: flex;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-top: 1px solid #ccc;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-btn {
+            background-color: #00cc66;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        #status {
+            padding: 10px;
+            text-align: center;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">File Transfer Chat</div>
+        <div class="chat-area" id="chatArea"></div>
+        <div id="status">Connecting to server...</div>
+        <div class="input-area">
+            <button class="file-btn" onclick="document.getElementById('fileInput').click()">Send File</button>
+            <input type="file" id="fileInput" onchange="sendFile()">
+        </div>
+    </div>
+
+    <script>
+        const chatArea = document.getElementById('chatArea');
+        const fileInput = document.getElementById('fileInput');
+        const status = document.getElementById('status');
+        let socket;
+
+        // Connect to WebSocket server (replace with your server URL after deployment)
+        function connectWebSocket() {
+            socket = new WebSocket('ws://localhost:8080'); // Local testing URL
+
+            socket.onopen = () => {
+                status.textContent = 'Connected! Send a file to start.';
+            };
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                displayMessage(data.fileName, data.fileSize, false);
+            };
+
+            socket.onclose = () => {
+                status.textContent = 'Disconnected from server.';
+            };
+
+            socket.onerror = () => {
+                status.textContent = 'Error connecting to server.';
+            };
+        }
+
+        // Send file to server
+        function sendFile() {
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const fileData = {
+                        fileName: file.name,
+                        fileSize: file.size,
+                        fileContent: e.target.result // Base64 encoded file
+                    };
+                    socket.send(JSON.stringify(fileData));
+                    displayMessage(file.name, file.size, true);
+                };
+                reader.readAsDataURL(file); // Convert file to Base64
+                fileInput.value = ''; // Reset input
+            }
+        }
+
+        // Display message in chat
+        function displayMessage(fileName, fileSize, isSent) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            messageDiv.classList.add(isSent ? 'sent' : 'received');
+            const sizeKB = (fileSize / 1024).toFixed(2);
+            messageDiv.textContent = `${fileName} (${sizeKB} KB)`;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight; // Auto-scroll to bottom
+        }
+
+        // Start WebSocket connection
+        connectWebSocket();
+    </script>
+</body>
+</html>
