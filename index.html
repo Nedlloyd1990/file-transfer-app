@@ -18,15 +18,14 @@
 
         .container {
             width: 100%;
-            max-width: 450px;
+            max-width: 500px;
             background-color: #ffffff;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
             border-radius: 12px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            height: 85vh;
-            transition: all 0.3s ease;
+            height: 90vh;
         }
 
         .header {
@@ -50,7 +49,6 @@
             height: 10px;
             background-color: #34c759;
             border-radius: 50%;
-            display: inline-block;
             margin-left: 10px;
         }
 
@@ -65,7 +63,7 @@
             margin: 12px 0;
             padding: 12px 16px;
             border-radius: 8px;
-            max-width: 75%;
+            max-width: 80%;
             font-size: 14px;
             line-height: 1.4;
             position: relative;
@@ -91,25 +89,34 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
         }
 
-        .file-link {
+        .file-link, .view-link {
             color: #1a73e8;
             text-decoration: none;
             font-weight: 500;
             transition: color 0.2s ease;
+            cursor: pointer;
         }
 
-        .file-link:hover {
+        .file-link:hover, .view-link:hover {
             color: #1557b0;
             text-decoration: underline;
         }
 
+        .expired {
+            color: #ea4335;
+            font-style: italic;
+        }
+
         .input-area {
-            display: flex;
             padding: 15px;
             background-color: #ffffff;
             border-top: 1px solid #e0e0e0;
-            align-items: center;
+        }
+
+        .text-input-row {
+            display: flex;
             gap: 10px;
+            margin-bottom: 10px;
         }
 
         #textInput {
@@ -120,7 +127,6 @@
             font-size: 14px;
             outline: none;
             transition: border-color 0.2s ease;
-            min-width: 0;
             background-color: #f9f9f9;
         }
 
@@ -133,11 +139,17 @@
             color: #888;
         }
 
+        .file-input-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
         #fileInput {
             display: none;
         }
 
-        .file-btn, .send-btn {
+        .send-btn, .file-btn {
             background: linear-gradient(135deg, #1a73e8, #185abc);
             color: white;
             padding: 10px 20px;
@@ -148,9 +160,23 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .file-btn:hover, .send-btn:hover {
+        .send-btn:hover, .file-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+        }
+
+        .options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        select, input[type="number"] {
+            padding: 8px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 13px;
+            background-color: #f9f9f9;
         }
 
         #status {
@@ -165,11 +191,27 @@
             position: relative;
         }
 
-        .file-message::after {
-            content: " (Expires in 10s)";
+        .file-message .timer {
             font-size: 12px;
             color: #ea4335;
             margin-left: 8px;
+        }
+
+        .recall-btn {
+            background: #ea4335;
+            color: white;
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: transform 0.2s ease;
+        }
+
+        .recall-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(234, 67, 53, 0.3);
         }
     </style>
 </head>
@@ -182,10 +224,26 @@
         <div class="chat-area" id="chatArea"></div>
         <div id="status">Connecting to server...</div>
         <div class="input-area">
-            <input type="text" id="textInput" placeholder="Type your message here..." onkeydown="if(event.key === 'Enter') sendText()">
-            <button class="send-btn" onclick="sendText()">Send</button>
-            <button class="file-btn" onclick="document.getElementById('fileInput').click()">File</button>
-            <input type="file" id="fileInput" onchange="sendFile()">
+            <div class="text-input-row">
+                <input type="text" id="textInput" placeholder="Type your message here..." onkeydown="if(event.key === 'Enter') sendText()">
+                <button class="send-btn" onclick="sendText()">Send</button>
+            </div>
+            <div class="file-input-row">
+                <button class="file-btn" onclick="document.getElementById('fileInput').click()">Send File</button>
+                <input type="file" id="fileInput" onchange="sendFile()">
+                <div class="options">
+                    <select id="fileMode">
+                        <option value="download">Download</option>
+                        <option value="view">View Only</option>
+                    </select>
+                    <select id="deleteMode">
+                        <option value="none">No Auto-Delete</option>
+                        <option value="once">Delete After View</option>
+                        <option value="time">Delete After Time</option>
+                    </select>
+                    <input type="number" id="deleteTime" min="1" placeholder="Time (s)" style="width: 80px;">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -193,9 +251,13 @@
         const chatArea = document.getElementById('chatArea');
         const fileInput = document.getElementById('fileInput');
         const textInput = document.getElementById('textInput');
+        const fileMode = document.getElementById('fileMode');
+        const deleteMode = document.getElementById('deleteMode');
+        const deleteTime = document.getElementById('deleteTime');
         const status = document.getElementById('status');
         const statusDot = document.querySelector('.status-dot');
         let socket;
+        let messageIdCounter = 0; // Unique ID for recall
 
         // Connect to WebSocket server
         function connectWebSocket() {
@@ -203,21 +265,22 @@
 
             socket.onopen = () => {
                 status.textContent = 'Connected securely';
-                statusDot.style.backgroundColor = '#34c759'; // Green when connected
+                statusDot.style.backgroundColor = '#34c759';
                 console.log('WebSocket connected');
             };
 
             socket.onmessage = (event) => {
-                console.log('Raw data received (type):', typeof event.data, event.data);
-                const messageData = event.data.toString('utf8'); // Ensure string
-                console.log('Decoded message:', messageData);
+                const messageData = event.data.toString('utf8');
+                console.log('Raw data received:', messageData);
                 try {
                     const data = JSON.parse(messageData);
                     console.log('Parsed data:', data);
                     if (data.text) {
                         displayTextMessage(data.text, false);
                     } else if (data.fileName) {
-                        displayFileMessage(data.fileName, data.fileSize, data.fileContent, false);
+                        displayFileMessage(data, false);
+                    } else if (data.recallId) {
+                        recallMessage(data.recallId);
                     }
                 } catch (error) {
                     console.log('Parse error:', error);
@@ -226,13 +289,13 @@
 
             socket.onclose = () => {
                 status.textContent = 'Disconnected from server';
-                statusDot.style.backgroundColor = '#ea4335'; // Red when disconnected
+                statusDot.style.backgroundColor = '#ea4335';
                 console.log('WebSocket disconnected');
             };
 
             socket.onerror = (error) => {
                 status.textContent = 'Connection error';
-                statusDot.style.backgroundColor = '#ea4335'; // Red on error
+                statusDot.style.backgroundColor = '#ea4335';
                 console.log('WebSocket error:', error);
             };
         }
@@ -246,28 +309,33 @@
                 console.log('Sending text:', jsonString);
                 socket.send(jsonString);
                 displayTextMessage(text, true);
-                textInput.value = ''; // Clear input
+                textInput.value = '';
             }
         }
 
-        // Send file with content
+        // Send file with options
         function sendFile() {
             const file = fileInput.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
+                    const messageId = messageIdCounter++;
                     const fileData = {
                         fileName: file.name,
                         fileSize: file.size,
-                        fileContent: e.target.result // Base64 encoded file
+                        fileContent: e.target.result,
+                        mode: fileMode.value,
+                        deleteMode: deleteMode.value,
+                        deleteTime: deleteMode.value === 'time' ? (parseInt(deleteTime.value) || 10) * 1000 : null,
+                        messageId: messageId
                     };
                     const jsonString = JSON.stringify(fileData);
                     console.log('Sending file:', jsonString);
                     socket.send(jsonString);
-                    displayFileMessage(file.name, file.size, e.target.result, true);
+                    displayFileMessage(fileData, true);
                 };
                 reader.readAsDataURL(file);
-                fileInput.value = ''; // Reset input
+                fileInput.value = '';
             }
         }
 
@@ -278,38 +346,98 @@
             messageDiv.classList.add(isSent ? 'sent' : 'received');
             messageDiv.textContent = text;
             chatArea.appendChild(messageDiv);
-            chatArea.scrollTop = chatArea.scrollHeight; // Auto-scroll
+            chatArea.scrollTop = chatArea.scrollHeight;
         }
 
-        // Display file message with downloadable link and 10-second deletion
-        function displayFileMessage(fileName, fileSize, fileContent, isSent) {
+        // Display file message with options
+        function displayFileMessage(data, isSent) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', 'file-message');
             messageDiv.classList.add(isSent ? 'sent' : 'received');
-            const sizeKB = (fileSize / 1024).toFixed(2);
+            messageDiv.dataset.messageId = data.messageId; // For recall
+            const sizeKB = (data.fileSize / 1024).toFixed(2);
 
-            const link = document.createElement('a');
-            link.classList.add('file-link');
-            link.textContent = `${fileName} (${sizeKB} KB)`;
-            if (fileContent) {
-                link.href = fileContent; // Base64 data URL
-                link.download = fileName; // Trigger download
-                console.log('File link created:', { href: link.href, download: fileName });
-            } else {
-                console.log('No fileContent received for:', fileName);
+            const content = document.createElement('span');
+            if (data.mode === 'download') {
+                const link = document.createElement('a');
+                link.classList.add('file-link');
+                link.textContent = `${data.fileName} (${sizeKB} KB)`;
+                link.href = data.fileContent;
+                link.download = data.fileName;
+                content.appendChild(link);
+            } else if (data.mode === 'view') {
+                content.classList.add('view-link');
+                content.textContent = `${data.fileName} (${sizeKB} KB)`;
+                content.onclick = () => {
+                    showPreview(data.fileContent, data.fileName, messageDiv);
+                    if (data.deleteMode === 'once') {
+                        setTimeout(() => removeMessage(messageDiv, data.fileName), 100);
+                    }
+                };
             }
 
-            messageDiv.appendChild(link);
-            chatArea.appendChild(messageDiv);
-            chatArea.scrollTop = chatArea.scrollHeight; // Auto-scroll
+            // Timer or expiration notice
+            const timer = document.createElement('span');
+            timer.classList.add('timer');
+            if (data.deleteMode === 'time' && data.deleteTime) {
+                timer.textContent = ` (Expires in ${data.deleteTime / 1000}s)`;
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.innerHTML = `<span class="expired">${data.fileName} (Expired)</span>`;
+                        console.log(`Expired file: ${data.fileName}`);
+                    }
+                }, data.deleteTime);
+            } else if (data.deleteMode === 'once') {
+                timer.textContent = ` (View Once)`;
+            }
 
-            // Delete the file message after 10 seconds
-            setTimeout(() => {
-                if (messageDiv.parentNode) {
-                    messageDiv.parentNode.removeChild(messageDiv);
-                    console.log(`Deleted file message: ${fileName}`);
+            messageDiv.appendChild(content);
+            messageDiv.appendChild(timer);
+
+            // Recall button for sender
+            if (isSent) {
+                const recallBtn = document.createElement('button');
+                recallBtn.classList.add('recall-btn');
+                recallBtn.textContent = 'Recall';
+                recallBtn.onclick = () => recallMessage(data.messageId);
+                messageDiv.appendChild(recallBtn);
+            }
+
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // Show file preview (view only)
+        function showPreview(fileContent, fileName) {
+            const previewWindow = window.open('', '_blank');
+            if (fileName.endsWith('.txt')) {
+                const text = atob(fileContent.split(',')[1]);
+                previewWindow.document.write(`<pre>${text}</pre>`);
+            } else {
+                previewWindow.document.write(`<img src="${fileContent}" style="max-width: 100%;">`);
+            }
+            previewWindow.document.title = fileName;
+        }
+
+        // Remove message from chat
+        function removeMessage(messageDiv, fileName) {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+                console.log(`Deleted file message: ${fileName}`);
+            }
+        }
+
+        // Recall message
+        function recallMessage(messageId) {
+            const recallData = { recallId: messageId };
+            socket.send(JSON.stringify(recallData));
+            const messages = chatArea.querySelectorAll(`[data-message-id="${messageId}"]`);
+            messages.forEach(msg => {
+                if (msg.parentNode) {
+                    msg.parentNode.removeChild(msg);
+                    console.log(`Recalled message ID: ${messageId}`);
                 }
-            }, 10000); // 10 seconds
+            });
         }
 
         // Start WebSocket connection
