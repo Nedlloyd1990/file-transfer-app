@@ -3,80 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp-like File Transfer</title>
+    <title>FileSync Pro</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
             margin: 0;
-            background-color: #f0f0f0;
+            background-color: #f5f7fa;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            color: #333;
         }
 
         .container {
             width: 100%;
-            max-width: 400px;
-            background-color: white;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            border-radius: 10px;
+            max-width: 450px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            height: 80vh;
+            height: 85vh;
+            transition: all 0.3s ease;
         }
 
         .header {
-            background-color: #00cc66;
+            background: linear-gradient(135deg, #1a73e8, #185abc);
             color: white;
-            padding: 10px;
-            text-align: center;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             font-size: 18px;
+            font-weight: 600;
+        }
+
+        .header .logo {
+            font-size: 20px;
+            letter-spacing: 1px;
+        }
+
+        .header .status-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #34c759;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 10px;
         }
 
         .chat-area {
             flex: 1;
-            padding: 10px;
+            padding: 20px;
             overflow-y: auto;
-            background-color: #ece5dd;
+            background-color: #fafafa;
         }
 
         .message {
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 10px;
-            max-width: 70%;
-            word-wrap: break-word;
+            margin: 12px 0;
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 75%;
+            font-size: 14px;
+            line-height: 1.4;
+            position: relative;
+            animation: slideIn 0.2s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .sent {
-            background-color: #dcf8c6;
+            background-color: #e8f0fe;
+            color: #1a73e8;
             margin-left: auto;
-            text-align: right;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
         .received {
-            background-color: white;
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
             margin-right: auto;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
         }
 
         .file-link {
-            color: #00cc66; /* Green color for visibility */
-            text-decoration: underline;
-            cursor: pointer;
-            font-weight: bold; /* Make it stand out */
+            color: #1a73e8;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
         }
 
         .file-link:hover {
-            color: #00994d; /* Darker green on hover */
+            color: #1557b0;
+            text-decoration: underline;
         }
 
         .input-area {
             display: flex;
-            padding: 10px;
-            background-color: #f0f0f0;
-            border-top: 1px solid #ccc;
+            padding: 15px;
+            background-color: #ffffff;
+            border-top: 1px solid #e0e0e0;
+            align-items: center;
         }
 
         #fileInput {
@@ -84,25 +116,36 @@
         }
 
         .file-btn {
-            background-color: #00cc66;
+            background: linear-gradient(135deg, #1a73e8, #185abc);
             color: white;
-            padding: 10px;
+            padding: 10px 20px;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
-            margin-right: 10px;
+            font-weight: 500;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .file-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
         }
 
         #status {
             padding: 10px;
             text-align: center;
-            color: #555;
+            color: #666;
+            font-size: 13px;
+            background-color: #f1f3f4;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">File Transfer Chat</div>
+        <div class="header">
+            <span class="logo">FileSync Pro</span>
+            <span class="status-dot"></span>
+        </div>
         <div class="chat-area" id="chatArea"></div>
         <div id="status">Connecting to server...</div>
         <div class="input-area">
@@ -115,6 +158,7 @@
         const chatArea = document.getElementById('chatArea');
         const fileInput = document.getElementById('fileInput');
         const status = document.getElementById('status');
+        const statusDot = document.querySelector('.status-dot');
         let socket;
 
         // Connect to WebSocket server
@@ -122,7 +166,8 @@
             socket = new WebSocket('wss://file-transfer-server.onrender.com');
 
             socket.onopen = () => {
-                status.textContent = 'Connected! Send a file to start.';
+                status.textContent = 'Connected securely';
+                statusDot.style.backgroundColor = '#34c759'; // Green when connected
                 console.log('WebSocket connected');
             };
 
@@ -140,12 +185,14 @@
             };
 
             socket.onclose = () => {
-                status.textContent = 'Disconnected from server.';
+                status.textContent = 'Disconnected from server';
+                statusDot.style.backgroundColor = '#ea4335'; // Red when disconnected
                 console.log('WebSocket disconnected');
             };
 
             socket.onerror = (error) => {
-                status.textContent = 'Error connecting to server.';
+                status.textContent = 'Connection error';
+                statusDot.style.backgroundColor = '#ea4335'; // Red on error
                 console.log('WebSocket error:', error);
             };
         }
