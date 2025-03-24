@@ -143,7 +143,6 @@
             display: flex;
             gap: 10px;
             align-items: center;
-            flex-wrap: wrap;
         }
 
         #fileInput {
@@ -166,32 +165,12 @@
             box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
         }
 
-        .options {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        select, input[type="number"] {
-            padding: 10px;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            font-size: 14px;
-            background-color: #f9f9f9;
-            min-width: 120px;
-        }
-
         #status {
             padding: 10px;
             text-align: center;
             color: #666;
             font-size: 13px;
             background-color: #f1f3f4;
-        }
-
-        .file-message {
-            position: relative;
         }
 
         .file-message .timer {
@@ -216,6 +195,51 @@
             transform: translateY(-1px);
             box-shadow: 0 2px 6px rgba(234, 67, 53, 0.3);
         }
+
+        .file-options-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .file-options-panel h3 {
+            margin: 0;
+            font-size: 16px;
+            color: #1a73e8;
+        }
+
+        .file-options-panel select, .file-options-panel input[type="number"] {
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            background-color: #f9f9f9;
+            width: 100%;
+        }
+
+        .file-options-panel button {
+            background: linear-gradient(135deg, #1a73e8, #185abc);
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .file-options-panel button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -233,34 +257,39 @@
             </div>
             <div class="file-input-row">
                 <button class="file-btn" onclick="document.getElementById('fileInput').click()">Send File</button>
-                <input type="file" id="fileInput" onchange="sendFile()">
-                <div class="options">
-                    <select id="fileMode">
-                        <option value="download">Download</option>
-                        <option value="view">View Only</option>
-                    </select>
-                    <select id="deleteMode">
-                        <option value="none">No Auto-Delete</option>
-                        <option value="once">Delete After View</option>
-                        <option value="time">Delete After Time</option>
-                    </select>
-                    <input type="number" id="deleteTime" min="1" placeholder="Time (s)" value="10" style="width: 80px;">
-                </div>
+                <input type="file" id="fileInput" onchange="showFileOptions()">
             </div>
         </div>
+    </div>
+
+    <div class="file-options-panel" id="fileOptionsPanel">
+        <h3>File Options</h3>
+        <select id="fileMode">
+            <option value="download">Download</option>
+            <option value="view">View Only</option>
+        </select>
+        <select id="deleteMode">
+            <option value="none">No Auto-Delete</option>
+            <option value="once">Delete After View</option>
+            <option value="time">Delete After Time</option>
+        </select>
+        <input type="number" id="deleteTime" min="1" placeholder="Time (s)" value="10">
+        <button onclick="sendFileWithOptions()">Send</button>
     </div>
 
     <script>
         const chatArea = document.getElementById('chatArea');
         const fileInput = document.getElementById('fileInput');
         const textInput = document.getElementById('textInput');
+        const fileOptionsPanel = document.getElementById('fileOptionsPanel');
         const fileMode = document.getElementById('fileMode');
         const deleteMode = document.getElementById('deleteMode');
         const deleteTime = document.getElementById('deleteTime');
         const status = document.getElementById('status');
         const statusDot = document.querySelector('.status-dot');
         let socket;
-        let messageIdCounter = 0; // Unique ID for recall
+        let messageIdCounter = 0;
+        let selectedFile = null;
 
         // Connect to WebSocket server
         function connectWebSocket() {
@@ -316,16 +345,23 @@
             }
         }
 
-        // Send file with options
-        function sendFile() {
-            const file = fileInput.files[0];
-            if (file) {
+        // Show file options panel
+        function showFileOptions() {
+            selectedFile = fileInput.files[0];
+            if (selectedFile) {
+                fileOptionsPanel.style.display = 'flex';
+            }
+        }
+
+        // Send file with selected options
+        function sendFileWithOptions() {
+            if (selectedFile) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const messageId = messageIdCounter++;
                     const fileData = {
-                        fileName: file.name,
-                        fileSize: file.size,
+                        fileName: selectedFile.name,
+                        fileSize: selectedFile.size,
                         fileContent: e.target.result,
                         mode: fileMode.value,
                         deleteMode: deleteMode.value,
@@ -336,9 +372,11 @@
                     console.log('Sending file:', jsonString);
                     socket.send(jsonString);
                     displayFileMessage(fileData, true);
+                    fileOptionsPanel.style.display = 'none';
+                    fileInput.value = '';
+                    selectedFile = null;
                 };
-                reader.readAsDataURL(file);
-                fileInput.value = '';
+                reader.readAsDataURL(selectedFile);
             }
         }
 
@@ -352,12 +390,12 @@
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
-        // Display file message with options and countdown
+        // Display file message with countdown
         function displayFileMessage(data, isSent) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', 'file-message');
             messageDiv.classList.add(isSent ? 'sent' : 'received');
-            messageDiv.dataset.messageId = data.messageId; // For recall
+            messageDiv.dataset.messageId = data.messageId;
             const sizeKB = (data.fileSize / 1024).toFixed(2);
 
             const content = document.createElement('span');
@@ -379,38 +417,34 @@
                 };
             }
 
-            // Timer or expiration notice
             const timer = document.createElement('span');
             timer.classList.add('timer');
             messageDiv.appendChild(content);
             messageDiv.appendChild(timer);
 
             if (data.deleteMode === 'time' && data.deleteTime) {
-                let remainingTime = data.deleteTime / 1000; // Convert to seconds
-                timer.textContent = ` (Expires in ${remainingTime}s)`;
+                let timeLeft = data.deleteTime; // In milliseconds
+                timer.textContent = ` (Expires in ${Math.floor(timeLeft / 1000)}s)`;
                 const countdown = setInterval(() => {
-                    remainingTime--;
-                    if (remainingTime > 0) {
-                        timer.textContent = ` (Expires in ${remainingTime}s)`;
-                    } else {
+                    timeLeft -= 1000;
+                    if (timeLeft >= 0 && messageDiv.parentNode) {
+                        timer.textContent = ` (Expires in ${Math.floor(timeLeft / 1000)}s)`;
+                    } else if (messageDiv.parentNode) {
                         clearInterval(countdown);
-                        if (messageDiv.parentNode) {
-                            messageDiv.innerHTML = `<span class="expired">${data.fileName} (Expired)</span>`;
-                            console.log(`Expired file: ${data.fileName}`);
-                        }
+                        messageDiv.innerHTML = `<span class="expired">${data.fileName} (Expired)</span>`;
+                        console.log(`Expired file: ${data.fileName}`);
                     }
-                }, 1000); // Update every second
+                }, 1000);
             } else if (data.deleteMode === 'once') {
                 timer.textContent = ` (View Once)`;
             }
 
-            // Recall button for sender
             if (isSent) {
                 const recallBtn = document.createElement('button');
                 recallBtn.classList.add('recall-btn');
                 recallBtn.textContent = 'Recall';
                 recallBtn.onclick = () => {
-                    if (data.deleteMode === 'time') clearInterval(countdown); // Stop countdown on recall
+                    if (data.deleteMode === 'time') clearInterval(countdown);
                     recallMessage(data.messageId);
                 };
                 messageDiv.appendChild(recallBtn);
