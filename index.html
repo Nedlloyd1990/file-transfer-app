@@ -108,7 +108,7 @@
 
         // Connect to WebSocket server (replace with your server URL after deployment)
         function connectWebSocket() {
-            socket = new WebSocket('ws://localhost:8080'); // Local testing URL
+            socket = new WebSocket('wss://file-transfer-server.onrender.com');
 
             socket.onopen = () => {
                 status.textContent = 'Connected! Send a file to start.';
