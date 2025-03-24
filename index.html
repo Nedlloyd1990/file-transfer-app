@@ -114,16 +114,23 @@
 
         #textInput {
             flex: 1;
-            padding: 10px;
+            padding: 12px;
             border: 1px solid #e0e0e0;
             border-radius: 6px;
             font-size: 14px;
             outline: none;
             transition: border-color 0.2s ease;
+            min-width: 0; /* Ensures it shrinks properly */
+            background-color: #f9f9f9; /* Slight tint for visibility */
         }
 
         #textInput:focus {
             border-color: #1a73e8;
+            background-color: #ffffff;
+        }
+
+        #textInput::placeholder {
+            color: #888;
         }
 
         #fileInput {
@@ -164,7 +171,7 @@
         <div class="chat-area" id="chatArea"></div>
         <div id="status">Connecting to server...</div>
         <div class="input-area">
-            <input type="text" id="textInput" placeholder="Type a message..." onkeydown="if(event.key === 'Enter') sendText()">
+            <input type="text" id="textInput" placeholder="Type your message here..." onkeydown="if(event.key === 'Enter') sendText()">
             <button class="send-btn" onclick="sendText()">Send</button>
             <button class="file-btn" onclick="document.getElementById('fileInput').click()">File</button>
             <input type="file" id="fileInput" onchange="sendFile()">
