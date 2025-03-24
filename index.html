@@ -352,7 +352,7 @@
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
-        // Display file message with options
+        // Display file message with options and countdown
         function displayFileMessage(data, isSent) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', 'file-message');
@@ -382,27 +382,37 @@
             // Timer or expiration notice
             const timer = document.createElement('span');
             timer.classList.add('timer');
+            messageDiv.appendChild(content);
+            messageDiv.appendChild(timer);
+
             if (data.deleteMode === 'time' && data.deleteTime) {
-                timer.textContent = ` (Expires in ${data.deleteTime / 1000}s)`;
-                setTimeout(() => {
-                    if (messageDiv.parentNode) {
-                        messageDiv.innerHTML = `<span class="expired">${data.fileName} (Expired)</span>`;
-                        console.log(`Expired file: ${data.fileName}`);
+                let remainingTime = data.deleteTime / 1000; // Convert to seconds
+                timer.textContent = ` (Expires in ${remainingTime}s)`;
+                const countdown = setInterval(() => {
+                    remainingTime--;
+                    if (remainingTime > 0) {
+                        timer.textContent = ` (Expires in ${remainingTime}s)`;
+                    } else {
+                        clearInterval(countdown);
+                        if (messageDiv.parentNode) {
+                            messageDiv.innerHTML = `<span class="expired">${data.fileName} (Expired)</span>`;
+                            console.log(`Expired file: ${data.fileName}`);
+                        }
                     }
-                }, data.deleteTime);
+                }, 1000); // Update every second
             } else if (data.deleteMode === 'once') {
                 timer.textContent = ` (View Once)`;
             }
-
-            messageDiv.appendChild(content);
-            messageDiv.appendChild(timer);
 
             // Recall button for sender
             if (isSent) {
                 const recallBtn = document.createElement('button');
                 recallBtn.classList.add('recall-btn');
                 recallBtn.textContent = 'Recall';
-                recallBtn.onclick = () => recallMessage(data.messageId);
+                recallBtn.onclick = () => {
+                    if (data.deleteMode === 'time') clearInterval(countdown); // Stop countdown on recall
+                    recallMessage(data.messageId);
+                };
                 messageDiv.appendChild(recallBtn);
             }
 
