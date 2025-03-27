@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FileSync Pro</title>
+    <title>FileSync Pro (Web3)</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script> <!-- Web3.js for Ethereum -->
+    <script src="https://cdn.jsdelivr.net/npm/ipfs-http-client@50.1.2/dist/ipfs-http-client.min.js"></script> <!-- IPFS -->
     <style>
         body {
             font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -29,7 +31,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #1a73e8, #185abc); /* Customizable via branding */
+            background: linear-gradient(135deg, #854cff, #4c33cc); /* Web3-inspired gradient */
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -82,7 +84,7 @@
 
         .sent {
             background-color: #e8f0fe;
-            color: #1a73e8;
+            color: #854cff;
             margin-left: auto;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
@@ -95,7 +97,7 @@
         }
 
         .file-link, .view-link {
-            color: #1a73e8;
+            color: #854cff;
             text-decoration: none;
             font-weight: 500;
             transition: color 0.2s ease;
@@ -103,7 +105,7 @@
         }
 
         .file-link:hover, .view-link:hover {
-            color: #1557b0;
+            color: #4c33cc;
             text-decoration: underline;
         }
 
@@ -136,7 +138,7 @@
         }
 
         #textInput:focus {
-            border-color: #1a73e8;
+            border-color: #854cff;
             background-color: #ffffff;
         }
 
@@ -154,8 +156,8 @@
             display: none;
         }
 
-        .send-btn, .file-btn {
-            background: linear-gradient(135deg, #1a73e8, #185abc);
+        .send-btn, .file-btn, .connect-btn {
+            background: linear-gradient(135deg, #854cff, #4c33cc);
             color: white;
             padding: 10px 20px;
             border: none;
@@ -165,9 +167,9 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .send-btn:hover, .file-btn:hover {
+        .send-btn:hover, .file-btn:hover, .connect-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+            box-shadow: 0 4px 12px rgba(133, 76, 255, 0.3);
         }
 
         #status {
@@ -224,7 +226,7 @@
         .file-options-panel h3 {
             margin: 0;
             font-size: 16px;
-            color: #1a73e8;
+            color: #854cff;
         }
 
         .file-options-panel label {
@@ -243,7 +245,7 @@
         }
 
         .file-options-panel button {
-            background: linear-gradient(135deg, #1a73e8, #185abc);
+            background: linear-gradient(135deg, #854cff, #4c33cc);
             color: white;
             padding: 10px;
             border: none;
@@ -254,7 +256,7 @@
 
         .file-options-panel button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+            box-shadow: 0 4px 12px rgba(133, 76, 255, 0.3);
         }
 
         .thumbnail {
@@ -262,12 +264,6 @@
             max-height: 50px;
             margin-top: 5px;
             display: block;
-        }
-
-        .read-receipt {
-            font-size: 10px;
-            color: #34c759;
-            margin-left: 8px;
         }
 
         .version-history {
@@ -280,19 +276,20 @@
 <body>
     <div class="container">
         <div class="header">
-            <span class="logo">FileSync Pro</span> <!-- Replace with custom logo via branding -->
+            <span class="logo">FileSync Pro (Web3)</span>
             <span class="status-dot"></span>
         </div>
         <div class="chat-area" id="chatArea"></div>
-        <div id="status">Connecting to server...</div>
+        <div id="status">Connect your wallet to start...</div>
         <div class="input-area">
             <div class="text-input-row">
-                <input type="text" id="textInput" placeholder="Type your message here..." onkeydown="if(event.key === 'Enter') sendText()">
-                <button class="send-btn" onclick="sendText()">Send</button>
+                <input type="text" id="textInput" placeholder="Type your message here..." onkeydown="if(event.key === 'Enter') sendText()" disabled>
+                <button class="send-btn" onclick="sendText()" disabled>Send</button>
             </div>
             <div class="file-input-row">
-                <button class="file-btn" onclick="document.getElementById('fileInput').click()">Send File</button>
-                <input type="file" id="fileInput" onchange="showFileOptions()">
+                <button class="file-btn" onclick="document.getElementById('fileInput').click()" disabled>Send File</button>
+                <input type="file" id="fileInput" onchange="showFileOptions()" disabled>
+                <button class="connect-btn" onclick="connectWallet()">Connect Wallet</button>
             </div>
         </div>
     </div>
@@ -312,13 +309,11 @@
         </select>
         <label>Expiration Time (seconds):</label>
         <input type="number" id="deleteTime" min="1" placeholder="Time (s)" value="10">
-        <label>Encrypt File:</label>
-        <input type="checkbox" id="encryptFile">
-        <label>Session Expiration (minutes):</label>
-        <input type="number" id="sessionTime" min="1" placeholder="Session Time (m)">
-        <label>Version Number (optional):</label>
-        <input type="number" id="versionNumber" min="1" placeholder="Version">
-        <button onclick="sendFileWithOptions()">Send</button>
+        <label>Store on IPFS:</label>
+        <input type="checkbox" id="useIPFS" checked>
+        <label>FSP Token Cost:</label>
+        <input type="number" id="tokenCost" min="0" value="1" disabled>
+        <button onclick="sendFileWithOptions()">Send (1 FSP)</button>
     </div>
 
     <script>
@@ -329,67 +324,87 @@
         const fileMode = document.getElementById('fileMode');
         const deleteMode = document.getElementById('deleteMode');
         const deleteTime = document.getElementById('deleteTime');
-        const encryptFile = document.getElementById('encryptFile');
-        const sessionTime = document.getElementById('sessionTime');
-        const versionNumber = document.getElementById('versionNumber');
+        const useIPFS = document.getElementById('useIPFS');
+        const tokenCost = document.getElementById('tokenCost');
         const status = document.getElementById('status');
         const statusDot = document.querySelector('.status-dot');
-        let socket;
+        let web3, accounts, ipfs, socket; // Web3 and IPFS instances
         let messageIdCounter = 0;
         let selectedFile = null;
-        let fileVersions = {}; // Store file versions
+        let userTokens = 100; // Mock token balance
 
-        // Connect to WebSocket server
-        function connectWebSocket() {
-            socket = new WebSocket('wss://file-transfer-server.onrender.com');
+        // Mock smart contract ABI (simplified)
+        const contractABI = [
+            {
+                "inputs": [{"name": "cid", "type": "string"}, {"name": "expiry", "type": "uint256"}],
+                "name": "setFileAccess",
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [{"name": "cid", "type": "string"}],
+                "name": "getFileAccess",
+                "outputs": [{"name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+        const contractAddress = "0x1234567890123456789012345678901234567890"; // Placeholder
 
-            socket.onopen = () => {
-                status.textContent = 'Connected securely';
-                statusDot.style.backgroundColor = '#34c759';
-                console.log('WebSocket connected');
-            };
-
-            socket.onmessage = (event) => {
-                const messageData = event.data.toString('utf8');
-                console.log('Raw data received:', messageData);
+        // Connect to MetaMask
+        async function connectWallet() {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
                 try {
-                    const data = JSON.parse(messageData);
-                    console.log('Parsed data:', data);
-                    if (data.text) {
-                        displayTextMessage(data.text, false);
-                    } else if (data.fileName) {
-                        displayFileMessage(data, false);
-                    } else if (data.recallId) {
-                        recallMessage(data.recallId);
-                    } else if (data.annotation) {
-                        displayAnnotation(data);
-                    }
+                    accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                    status.textContent = `Connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
+                    statusDot.style.backgroundColor = '#34c759';
+                    textInput.disabled = false;
+                    fileInput.disabled = false;
+                    document.querySelector('.send-btn').disabled = false;
+                    document.querySelector('.file-btn').disabled = false;
+
+                    // Initialize IPFS (mocked here)
+                    ipfs = window.IpfsHttpClient ? IpfsHttpClient({ host: 'localhost', port: '5001' }) : { add: async (data) => ({ cid: 'QmMockHash' }) };
+
+                    // Mock WebSocket replacement (decentralized messaging simulation)
+                    socket = new WebSocket('wss://file-transfer-server.onrender.com'); // Placeholder for Whisper-like system
+                    socket.onmessage = handleMessage;
                 } catch (error) {
-                    console.log('Parse error:', error);
+                    status.textContent = 'Wallet connection failed';
+                    console.error(error);
                 }
-            };
+            } else {
+                status.textContent = 'Install MetaMask to use Web3 features';
+            }
+        }
 
-            socket.onclose = () => {
-                status.textContent = 'Disconnected from server';
-                statusDot.style.backgroundColor = '#ea4335';
-                console.log('WebSocket disconnected');
-            };
-
-            socket.onerror = (error) => {
-                status.textContent = 'Connection error';
-                statusDot.style.backgroundColor = '#ea4335';
-                console.log('WebSocket error:', error);
-            };
+        // Handle incoming messages
+        function handleMessage(event) {
+            const messageData = event.data.toString('utf8');
+            console.log('Raw data received:', messageData);
+            try {
+                const data = JSON.parse(messageData);
+                if (data.text) {
+                    displayTextMessage(data.text, false);
+                } else if (data.fileName) {
+                    displayFileMessage(data, false);
+                } else if (data.recallId) {
+                    recallMessage(data.recallId);
+                } else if (data.annotation) {
+                    displayAnnotation(data);
+                }
+            } catch (error) {
+                console.log('Parse error:', error);
+            }
         }
 
         // Send text message
         function sendText() {
             const text = textInput.value.trim();
-            if (text) {
-                const textData = { text: text };
-                const jsonString = JSON.stringify(textData);
-                console.log('Sending text:', jsonString);
-                socket.send(jsonString);
+            if (text && socket) {
+                const textData = { text: text, sender: accounts[0] };
+                socket.send(JSON.stringify(textData));
                 displayTextMessage(text, true);
                 textInput.value = '';
             }
@@ -403,54 +418,54 @@
             }
         }
 
-        // Simple encryption (for demo purposes)
-        function encryptContent(content) {
-            return btoa(content); // Base64 encode as a placeholder
-        }
-
-        function decryptContent(encryptedContent) {
-            return atob(encryptedContent);
-        }
-
-        // Send file with options
-        function sendFileWithOptions() {
-            if (selectedFile) {
+        // Send file with Web3 options
+        async function sendFileWithOptions() {
+            if (selectedFile && userTokens >= parseInt(tokenCost.value)) {
                 const reader = new FileReader();
-                reader.onload = (e) => {
+                reader.onload = async (e) => {
                     const messageId = messageIdCounter++;
-                    const fileContent = e.target.result;
-                    const encryptedContent = encryptFile.checked ? encryptContent(fileContent.split(',')[1]) : fileContent;
-                    const sessionExpiry = sessionTime.value ? parseInt(sessionTime.value) * 60 * 1000 : null;
+                    let fileContent = e.target.result;
+                    let cid;
+
+                    if (useIPFS.checked) {
+                        const fileBuffer = Buffer.from(fileContent.split(',')[1], 'base64');
+                        const result = await ipfs.add(fileBuffer); // Mocked if no IPFS node
+                        cid = result.cid.toString();
+                        fileContent = `ipfs://${cid}`;
+                    }
+
                     const fileData = {
                         fileName: selectedFile.name,
                         fileSize: selectedFile.size,
-                        fileContent: encryptedContent,
+                        fileContent: fileContent,
                         mode: fileMode.value,
                         deleteMode: deleteMode.value,
                         deleteTime: deleteMode.value === 'time' ? (parseInt(deleteTime.value) || 10) * 1000 : null,
                         messageId: messageId,
-                        encrypted: encryptFile.checked,
-                        sessionTime: sessionExpiry,
-                        version: versionNumber.value || null
+                        sender: accounts[0],
+                        cid: cid || null
                     };
 
+                    // Mock smart contract interaction
+                    const contract = new web3.eth.Contract(contractABI, contractAddress);
+                    if (fileData.deleteTime) {
+                        const expiry = Math.floor(Date.now() / 1000) + (fileData.deleteTime / 1000);
+                        console.log(`Setting file access on contract: CID ${cid}, Expiry ${expiry}`);
+                        // await contract.methods.setFileAccess(cid, expiry).send({ from: accounts[0] });
+                    }
+
+                    userTokens -= parseInt(tokenCost.value);
+                    status.textContent = `Connected: ${accounts[0].slice(0, 6)}... (Tokens: ${userTokens} FSP)`;
                     socket.send(JSON.stringify(fileData));
                     displayFileMessage(fileData, true);
 
-                    if (sessionExpiry) {
-                        setTimeout(() => {
-                            chatArea.innerHTML = '';
-                            console.log('Chat session expired and wiped');
-                        }, sessionExpiry);
-                    }
-
                     fileOptionsPanel.style.display = 'none';
                     fileInput.value = '';
-                    sessionTime.value = '';
-                    versionNumber.value = '';
                     selectedFile = null;
                 };
                 reader.readAsDataURL(selectedFile);
+            } else {
+                alert('Insufficient FSP Tokens');
             }
         }
 
@@ -464,40 +479,51 @@
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
-        // Display file message with unique features
-        function displayFileMessage(data, isSent) {
+        // Display file message with Web3 features
+        async function displayFileMessage(data, isSent) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', 'file-message');
             messageDiv.classList.add(isSent ? 'sent' : 'received');
             messageDiv.dataset.messageId = data.messageId;
             const sizeKB = (data.fileSize / 1024).toFixed(2);
-            const fileContent = data.encrypted ? `data:${data.fileName.split('.').pop()};base64,${decryptContent(data.fileContent)}` : data.fileContent;
 
             const content = document.createElement('span');
-            const actionHandler = () => {
-                if (data.encrypted) {
-                    alert('File is encrypted. Use the one-time decryption key provided by sender.');
+            const actionHandler = async () => {
+                let fileContent = data.fileContent;
+                if (data.cid) {
+                    fileContent = await fetchIPFS(data.cid); // Mocked fetch
+                }
+                if (data.deleteTime) {
+                    const contract = new web3.eth.Contract(contractABI, contractAddress);
+                    const expiry = 0; // await contract.methods.getFileAccess(data.cid).call();
+                    if (expiry && expiry < Math.floor(Date.now() / 1000)) {
+                        alert('File access has expired on the blockchain');
+                        return;
+                    }
                 }
                 if (data.mode === 'download') {
                     window.location.href = fileContent;
                 } else {
                     showPreview(fileContent, data.fileName);
                 }
+                if (data.deleteMode === 'once') {
+                    setTimeout(() => removeMessage(messageDiv, data.fileName), 100);
+                }
             };
 
             if (data.mode === 'download') {
                 const link = document.createElement('a');
                 link.classList.add('file-link');
-                link.textContent = `${data.fileName} (${sizeKB} KB)${data.encrypted ? ' 🔐' : ''}`;
+                link.textContent = `${data.fileName} (${sizeKB} KB)${data.cid ? ' 🌐' : ''}`;
                 link.onclick = (e) => { e.preventDefault(); actionHandler(); };
                 content.appendChild(link);
             } else if (data.mode === 'view') {
                 content.classList.add('view-link');
-                content.textContent = `${data.fileName} (${sizeKB} KB)${data.encrypted ? ' 🔐' : ''}`;
+                content.textContent = `${data.fileName} (${sizeKB} KB)${data.cid ? ' 🌐' : ''}`;
                 content.onclick = actionHandler;
                 const thumbnail = document.createElement('img');
                 thumbnail.classList.add('thumbnail');
-                thumbnail.src = data.fileName.endsWith('.txt') ? 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h6v6h6v10H6z"/></svg>' : fileContent;
+                thumbnail.src = data.fileName.endsWith('.txt') ? 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h6v6h6v10H6z"/></svg>' : data.fileContent;
                 content.appendChild(thumbnail);
             }
 
@@ -505,18 +531,6 @@
             timer.classList.add('timer');
             messageDiv.appendChild(content);
             messageDiv.appendChild(timer);
-
-            if (data.version) {
-                const versionSpan = document.createElement('span');
-                versionSpan.classList.add('version-history');
-                versionSpan.textContent = `Version ${data.version}`;
-                if (!fileVersions[data.fileName]) fileVersions[data.fileName] = [];
-                fileVersions[data.fileName].push({ version: data.version, messageId: data.messageId });
-                if (fileVersions[data.fileName].length > 1) {
-                    versionSpan.textContent += ` (Previous: ${fileVersions[data.fileName].map(v => `v${v.version}`).join(', ')})`;
-                }
-                messageDiv.appendChild(versionSpan);
-            }
 
             if (data.deleteMode === 'time' && data.deleteTime) {
                 let timeLeft = data.deleteTime;
@@ -550,7 +564,7 @@
                 const annotateBtn = document.createElement('button');
                 annotateBtn.classList.add('annotate-btn');
                 annotateBtn.textContent = 'Annotate';
-                annotateBtn.onclick = () => annotateFile(fileContent, data.fileName, data.messageId);
+                annotateBtn.onclick = () => annotateFile(data.fileContent, data.fileName, data.messageId);
                 messageDiv.appendChild(annotateBtn);
             }
 
@@ -558,11 +572,16 @@
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
-        // Show file preview (view only)
+        // Mock IPFS fetch
+        async function fetchIPFS(cid) {
+            return `https://ipfs.io/ipfs/${cid}`; // Placeholder, assumes public gateway
+        }
+
+        // Show file preview
         function showPreview(fileContent, fileName) {
             const previewWindow = window.open('', '_blank');
             if (fileName.endsWith('.txt')) {
-                const text = atob(fileContent.split(',')[1]);
+                const text = atob(fileContent.split(',')[1] || fileContent.split('/')[1]);
                 previewWindow.document.write(`<pre>${text}</pre>`);
             } else {
                 previewWindow.document.write(`<img src="${fileContent}" style="max-width: 100%;">`);
@@ -574,7 +593,7 @@
         function annotateFile(fileContent, fileName, messageId) {
             const annotation = prompt('Add your annotation:');
             if (annotation) {
-                const annotationData = { annotation, fileName, messageId };
+                const annotationData = { annotation, fileName, messageId, sender: accounts[0] };
                 socket.send(JSON.stringify(annotationData));
                 displayAnnotation(annotationData);
             }
@@ -583,13 +602,13 @@
         // Display annotation
         function displayAnnotation(data) {
             const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message', isSent ? 'sent' : 'received');
+            messageDiv.classList.add('message', data.sender === accounts[0] ? 'sent' : 'received');
             messageDiv.textContent = `Annotation for ${data.fileName}: ${data.annotation}`;
             chatArea.appendChild(messageDiv);
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
-        // Remove message from chat
+        // Remove message
         function removeMessage(messageDiv, fileName) {
             if (messageDiv.parentNode) {
                 messageDiv.parentNode.removeChild(messageDiv);
@@ -599,7 +618,7 @@
 
         // Recall message
         function recallMessage(messageId) {
-            const recallData = { recallId: messageId };
+            const recallData = { recallId: messageId, sender: accounts[0] };
             socket.send(JSON.stringify(recallData));
             const messages = chatArea.querySelectorAll(`[data-message-id="${messageId}"]`);
             messages.forEach(msg => {
@@ -609,16 +628,6 @@
                 }
             });
         }
-
-        // Apply custom branding (example)
-        function applyBranding() {
-            document.querySelector('.header').style.background = 'linear-gradient(135deg, #ff5733, #c70039)'; // Example company color
-            document.querySelector('.logo').textContent = 'YourCompany Sync'; // Example company name
-        }
-
-        // Start WebSocket connection and apply branding
-        connectWebSocket();
-        applyBranding();
     </script>
 </body>
 </html>
