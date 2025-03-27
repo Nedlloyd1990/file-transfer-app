@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,7 +29,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #1a73e8, #185abc); /* Customizable via branding */
+            background: linear-gradient(135deg, #1a73e8, #185abc);
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -185,7 +184,7 @@
             margin-left: 8px;
         }
 
-        .recall-btn, .annotate-btn {
+        .recall-btn {
             background: #ea4335;
             color: white;
             padding: 4px 8px;
@@ -197,13 +196,9 @@
             transition: transform 0.2s ease;
         }
 
-        .annotate-btn {
-            background: #34c759;
-        }
-
-        .recall-btn:hover, .annotate-btn:hover {
+        .recall-btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 2px 6px rgba(234, 67, 53, 0.3);
         }
 
         .file-options-panel {
@@ -264,24 +259,12 @@
             margin-top: 5px;
             display: block;
         }
-
-        .read-receipt {
-            font-size: 10px;
-            color: #34c759;
-            margin-left: 8px;
-        }
-
-        .version-history {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <span class="logo">FileSync Pro</span> <!-- Replace with custom logo via branding -->
+            <span class="logo">FileSync Pro</span>
             <span class="status-dot"></span>
         </div>
         <div class="chat-area" id="chatArea"></div>
@@ -313,12 +296,10 @@
         </select>
         <label>Expiration Time (seconds):</label>
         <input type="number" id="deleteTime" min="1" placeholder="Time (s)" value="10">
+        <label>Password (optional):</label>
+        <input type="text" id="filePassword" placeholder="Password for download">
         <label>Encrypt File:</label>
         <input type="checkbox" id="encryptFile">
-        <label>Session Expiration (minutes):</label>
-        <input type="number" id="sessionTime" min="1" placeholder="Session Time (m)">
-        <label>Version Number (optional):</label>
-        <input type="number" id="versionNumber" min="1" placeholder="Version">
         <button onclick="sendFileWithOptions()">Send</button>
     </div>
 
@@ -330,22 +311,29 @@
         const fileMode = document.getElementById('fileMode');
         const deleteMode = document.getElementById('deleteMode');
         const deleteTime = document.getElementById('deleteTime');
+        const filePassword = document.getElementById('filePassword');
         const encryptFile = document.getElementById('encryptFile');
-        const sessionTime = document.getElementById('sessionTime');
-        const versionNumber = document.getElementById('versionNumber');
         const status = document.getElementById('status');
         const statusDot = document.querySelector('.status-dot');
         let socket;
         let messageIdCounter = 0;
         let selectedFile = null;
-        let fileVersions = {}; // Store file versions
 
-        // Connect to WebSocket server
-        function connectWebSocket() {
+        // Simple encryption (Base64 as a placeholder; real-world use Web Crypto API)
+        function encryptContent(content) {
+            return btoa(content); // Mock encryption
+        }
+
+        function decryptContent(encryptedContent) {
+            return atob(encryptedContent); // Mock decryption
+        }
+
+        // Initialize WebSocket
+        function initSocket() {
             socket = new WebSocket('wss://file-transfer-server.onrender.com');
 
             socket.onopen = () => {
-                status.textContent = 'Connected securely';
+                status.textContent = 'Connected to server';
                 statusDot.style.backgroundColor = '#34c759';
                 console.log('WebSocket connected');
             };
@@ -355,15 +343,12 @@
                 console.log('Raw data received:', messageData);
                 try {
                     const data = JSON.parse(messageData);
-                    console.log('Parsed data:', data);
                     if (data.text) {
                         displayTextMessage(data.text, false);
                     } else if (data.fileName) {
                         displayFileMessage(data, false);
                     } else if (data.recallId) {
                         recallMessage(data.recallId);
-                    } else if (data.annotation) {
-                        displayAnnotation(data);
                     }
                 } catch (error) {
                     console.log('Parse error:', error);
@@ -387,10 +372,12 @@
         function sendText() {
             const text = textInput.value.trim();
             if (text) {
+                if (!socket || socket.readyState !== WebSocket.OPEN) {
+                    alert('Server not connected. Please wait or refresh.');
+                    return;
+                }
                 const textData = { text: text };
-                const jsonString = JSON.stringify(textData);
-                console.log('Sending text:', jsonString);
-                socket.send(jsonString);
+                socket.send(JSON.stringify(textData));
                 displayTextMessage(text, true);
                 textInput.value = '';
             }
@@ -401,58 +388,47 @@
             selectedFile = fileInput.files[0];
             if (selectedFile) {
                 fileOptionsPanel.style.display = 'flex';
+            } else {
+                alert('Please select a file.');
             }
-        }
-
-        // Simple encryption (for demo purposes)
-        function encryptContent(content) {
-            return btoa(content); // Base64 encode as a placeholder
-        }
-
-        function decryptContent(encryptedContent) {
-            return atob(encryptedContent);
         }
 
         // Send file with options
         function sendFileWithOptions() {
-            if (selectedFile) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const messageId = messageIdCounter++;
-                    const fileContent = e.target.result;
-                    const encryptedContent = encryptFile.checked ? encryptContent(fileContent.split(',')[1]) : fileContent;
-                    const sessionExpiry = sessionTime.value ? parseInt(sessionTime.value) * 60 * 1000 : null;
-                    const fileData = {
-                        fileName: selectedFile.name,
-                        fileSize: selectedFile.size,
-                        fileContent: encryptedContent,
-                        mode: fileMode.value,
-                        deleteMode: deleteMode.value,
-                        deleteTime: deleteMode.value === 'time' ? (parseInt(deleteTime.value) || 10) * 1000 : null,
-                        messageId: messageId,
-                        encrypted: encryptFile.checked,
-                        sessionTime: sessionExpiry,
-                        version: versionNumber.value || null
-                    };
-
-                    socket.send(JSON.stringify(fileData));
-                    displayFileMessage(fileData, true);
-
-                    if (sessionExpiry) {
-                        setTimeout(() => {
-                            chatArea.innerHTML = '';
-                            console.log('Chat session expired and wiped');
-                        }, sessionExpiry);
-                    }
-
-                    fileOptionsPanel.style.display = 'none';
-                    fileInput.value = '';
-                    sessionTime.value = '';
-                    versionNumber.value = '';
-                    selectedFile = null;
-                };
-                reader.readAsDataURL(selectedFile);
+            if (!selectedFile) return;
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                alert('Server not connected. Please wait or refresh.');
+                return;
             }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const messageId = messageIdCounter++;
+                let fileContent = e.target.result;
+                if (encryptFile.checked) {
+                    fileContent = encryptContent(fileContent.split(',')[1]); // Encrypt base64 part
+                }
+                const fileData = {
+                    fileName: selectedFile.name,
+                    fileSize: selectedFile.size,
+                    fileContent: fileContent,
+                    mode: fileMode.value,
+                    deleteMode: deleteMode.value,
+                    deleteTime: deleteMode.value === 'time' ? (parseInt(deleteTime.value) || 10) * 1000 : null,
+                    messageId: messageId,
+                    password: filePassword.value || null,
+                    encrypted: encryptFile.checked
+                };
+
+                socket.send(JSON.stringify(fileData));
+                displayFileMessage(fileData, true);
+
+                fileOptionsPanel.style.display = 'none';
+                fileInput.value = '';
+                filePassword.value = '';
+                selectedFile = null;
+            };
+            reader.readAsDataURL(selectedFile);
         }
 
         // Display text message
@@ -465,7 +441,7 @@
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
-        // Display file message with unique features
+        // Display file message
         function displayFileMessage(data, isSent) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', 'file-message');
@@ -476,20 +452,27 @@
 
             const content = document.createElement('span');
             const actionHandler = () => {
-                if (data.encrypted) {
-                    alert('File is encrypted. Use the one-time decryption key provided by sender.');
+                if (data.password) {
+                    const enteredPassword = prompt(`Enter password for ${data.fileName}:`);
+                    if (enteredPassword !== data.password) {
+                        alert('Incorrect password');
+                        return;
+                    }
                 }
                 if (data.mode === 'download') {
                     window.location.href = fileContent;
                 } else {
-                    showPreview(fileContent, data.fileName);
+                    showControlledPreview(fileContent, data.fileName);
+                }
+                if (data.deleteMode === 'once') {
+                    setTimeout(() => removeMessage(messageDiv, data.fileName), 100);
                 }
             };
 
             if (data.mode === 'download') {
                 const link = document.createElement('a');
                 link.classList.add('file-link');
-                link.textContent = `${data.fileName} (${sizeKB} KB)${data.encrypted ? ' 🔐' : ''}`;
+                link.textContent = `${data.fileName} (${sizeKB} KB)${data.password ? ' 🔒' : ''}${data.encrypted ? ' 🔐' : ''}`;
                 link.onclick = (e) => { e.preventDefault(); actionHandler(); };
                 content.appendChild(link);
             } else if (data.mode === 'view') {
@@ -506,18 +489,6 @@
             timer.classList.add('timer');
             messageDiv.appendChild(content);
             messageDiv.appendChild(timer);
-
-            if (data.version) {
-                const versionSpan = document.createElement('span');
-                versionSpan.classList.add('version-history');
-                versionSpan.textContent = `Version ${data.version}`;
-                if (!fileVersions[data.fileName]) fileVersions[data.fileName] = [];
-                fileVersions[data.fileName].push({ version: data.version, messageId: data.messageId });
-                if (fileVersions[data.fileName].length > 1) {
-                    versionSpan.textContent += ` (Previous: ${fileVersions[data.fileName].map(v => `v${v.version}`).join(', ')})`;
-                }
-                messageDiv.appendChild(versionSpan);
-            }
 
             if (data.deleteMode === 'time' && data.deleteTime) {
                 let timeLeft = data.deleteTime;
@@ -547,50 +518,62 @@
                     setTimeout(() => removeMessage(messageDiv, data.fileName), 500);
                 };
                 messageDiv.appendChild(recallBtn);
-            } else if (data.mode === 'view' && (data.fileName.endsWith('.jpg') || data.fileName.endsWith('.pdf'))) {
-                const annotateBtn = document.createElement('button');
-                annotateBtn.classList.add('annotate-btn');
-                annotateBtn.textContent = 'Annotate';
-                annotateBtn.onclick = () => annotateFile(fileContent, data.fileName, data.messageId);
-                messageDiv.appendChild(annotateBtn);
             }
 
             chatArea.appendChild(messageDiv);
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
-        // Show file preview (view only)
-        function showPreview(fileContent, fileName) {
-            const previewWindow = window.open('', '_blank');
-            if (fileName.endsWith('.txt')) {
-                const text = atob(fileContent.split(',')[1]);
-                previewWindow.document.write(`<pre>${text}</pre>`);
-            } else {
-                previewWindow.document.write(`<img src="${fileContent}" style="max-width: 100%;">`);
-            }
-            previewWindow.document.title = fileName;
+        // Controlled preview window (View Only)
+        function showControlledPreview(fileContent, fileName) {
+            const previewWindow = window.open('', '_blank', 'width=600,height=400,menubar=no,toolbar=no,location=no,status=no');
+            previewWindow.document.write(`
+                <html>
+                <head>
+                    <title>${fileName}</title>
+                    <style>
+                        body {
+                            margin: 0;
+                            background: #f0f0f0;
+                            user-select: none; /* Disable text selection */
+                            -webkit-user-select: none;
+                            -moz-user-select: none;
+                            -ms-user-select: none;
+                        }
+                        .content {
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            height: 100vh;
+                            overflow: hidden;
+                        }
+                        img, pre {
+                            max-width: 100%;
+                            max-height: 100%;
+                            pointer-events: none; /* Disable clicks */
+                        }
+                    </style>
+                </head>
+                <body oncontextmenu="return false;" onkeydown="if(event.key === 'PrintScreen') return false;">
+                    <div class="content">
+                        ${fileName.endsWith('.txt') ? `<pre>${atob(fileContent.split(',')[1])}</pre>` : `<img src="${fileContent}" alt="${fileName}">`}
+                    </div>
+                    <script>
+                        document.addEventListener('keydown', (e) => {
+                            if (e.ctrlKey || e.key === 'PrintScreen' || e.key === 'F12') {
+                                e.preventDefault();
+                                return false;
+                            }
+                        });
+                        window.addEventListener('beforeunload', () => window.blur());
+                    </script>
+                </body>
+                </html>
+            `);
+            previewWindow.document.close();
         }
 
-        // Annotate file
-        function annotateFile(fileContent, fileName, messageId) {
-            const annotation = prompt('Add your annotation:');
-            if (annotation) {
-                const annotationData = { annotation, fileName, messageId };
-                socket.send(JSON.stringify(annotationData));
-                displayAnnotation(annotationData);
-            }
-        }
-
-        // Display annotation
-        function displayAnnotation(data) {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message', isSent ? 'sent' : 'received');
-            messageDiv.textContent = `Annotation for ${data.fileName}: ${data.annotation}`;
-            chatArea.appendChild(messageDiv);
-            chatArea.scrollTop = chatArea.scrollHeight;
-        }
-
-        // Remove message from chat
+        // Remove message
         function removeMessage(messageDiv, fileName) {
             if (messageDiv.parentNode) {
                 messageDiv.parentNode.removeChild(messageDiv);
@@ -600,26 +583,21 @@
 
         // Recall message
         function recallMessage(messageId) {
-            const recallData = { recallId: messageId };
-            socket.send(JSON.stringify(recallData));
-            const messages = chatArea.querySelectorAll(`[data-message-id="${messageId}"]`);
-            messages.forEach(msg => {
-                if (msg.parentNode) {
-                    msg.parentNode.removeChild(msg);
-                    console.log(`Recalled message ID: ${messageId}`);
-                }
-            });
+            if (socket) {
+                const recallData = { recallId: messageId };
+                socket.send(JSON.stringify(recallData));
+                const messages = chatArea.querySelectorAll(`[data-message-id="${messageId}"]`);
+                messages.forEach(msg => {
+                    if (msg.parentNode) {
+                        msg.parentNode.removeChild(msg);
+                        console.log(`Recalled message ID: ${messageId}`);
+                    }
+                });
+            }
         }
 
-        // Apply custom branding (example)
-        function applyBranding() {
-            document.querySelector('.header').style.background = 'linear-gradient(135deg, #ff5733, #c70039)'; // Example company color
-            document.querySelector('.logo').textContent = 'YourCompany Sync'; // Example company name
-        }
-
-        // Start WebSocket connection and apply branding
-        connectWebSocket();
-        applyBranding();
+        // Start WebSocket
+        initSocket();
     </script>
 </body>
 </html>
