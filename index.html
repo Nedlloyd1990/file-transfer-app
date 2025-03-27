@@ -319,13 +319,13 @@
         let messageIdCounter = 0;
         let selectedFile = null;
 
-        // Simple encryption (Base64 as a placeholder; real-world use Web Crypto API)
+        // Simple encryption (Base64 as a placeholder)
         function encryptContent(content) {
-            return btoa(content); // Mock encryption
+            return btoa(content);
         }
 
         function decryptContent(encryptedContent) {
-            return atob(encryptedContent); // Mock decryption
+            return atob(encryptedContent);
         }
 
         // Initialize WebSocket
@@ -406,7 +406,7 @@
                 const messageId = messageIdCounter++;
                 let fileContent = e.target.result;
                 if (encryptFile.checked) {
-                    fileContent = encryptContent(fileContent.split(',')[1]); // Encrypt base64 part
+                    fileContent = encryptContent(fileContent.split(',')[1]);
                 }
                 const fileData = {
                     fileName: selectedFile.name,
@@ -535,7 +535,7 @@
                         body {
                             margin: 0;
                             background: #f0f0f0;
-                            user-select: none; /* Disable text selection */
+                            user-select: none;
                             -webkit-user-select: none;
                             -moz-user-select: none;
                             -ms-user-select: none;
@@ -550,7 +550,7 @@
                         img, pre {
                             max-width: 100%;
                             max-height: 100%;
-                            pointer-events: none; /* Disable clicks */
+                            pointer-events: none;
                         }
                     </style>
                 </head>
