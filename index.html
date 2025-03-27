@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +8,7 @@
     <title>FileSync Pro</title>
     <style>
         body {
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
             margin: 0;
             background-color: #f5f7fa;
             display: flex;
@@ -15,6 +17,7 @@
             height: 100vh;
             color: #333;
         }
+
         .container {
             width: 100%;
             max-width: 500px;
@@ -26,8 +29,9 @@
             flex-direction: column;
             height: 90vh;
         }
+
         .header {
-            background: linear-gradient(135deg, #1a73e8, #185abc);
+            background: linear-gradient(135deg, #1a73e8, #185abc); /* Customizable via branding */
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -36,6 +40,12 @@
             font-size: 18px;
             font-weight: 600;
         }
+
+        .header .logo {
+            font-size: 20px;
+            letter-spacing: 1px;
+        }
+
         .header .status-dot {
             width: 10px;
             height: 10px;
@@ -43,38 +53,79 @@
             border-radius: 50%;
             margin-left: 10px;
         }
+
         .chat-area {
             flex: 1;
             padding: 20px;
             overflow-y: auto;
             background-color: #fafafa;
         }
+
         .message {
             margin: 12px 0;
             padding: 12px 16px;
             border-radius: 8px;
             max-width: 80%;
             font-size: 14px;
+            line-height: 1.4;
+            position: relative;
+            animation: slideIn 0.2s ease;
         }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
         .sent {
             background-color: #e8f0fe;
             color: #1a73e8;
             margin-left: auto;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
+
         .received {
             background-color: #ffffff;
             border: 1px solid #e0e0e0;
             margin-right: auto;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
         }
+
+        .file-link, .view-link {
+            color: #1a73e8;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+            cursor: pointer;
+        }
+
+        .file-link:hover, .view-link:hover {
+            color: #1557b0;
+            text-decoration: underline;
+        }
+
+        .expired {
+            color: #ea4335;
+            font-style: italic;
+        }
+
         .input-area {
             padding: 15px;
             background-color: #ffffff;
             border-top: 1px solid #e0e0e0;
         }
+
         .text-input-row {
             display: flex;
             gap: 10px;
+            margin-bottom: 15px;
         }
+
         #textInput {
             flex: 1;
             padding: 12px;
@@ -82,15 +133,45 @@
             border-radius: 6px;
             font-size: 14px;
             outline: none;
+            transition: border-color 0.2s ease;
+            background-color: #f9f9f9;
         }
-        .send-btn {
+
+        #textInput:focus {
+            border-color: #1a73e8;
+            background-color: #ffffff;
+        }
+
+        #textInput::placeholder {
+            color: #888;
+        }
+
+        .file-input-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .send-btn, .file-btn {
             background: linear-gradient(135deg, #1a73e8, #185abc);
             color: white;
             padding: 10px 20px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
+            font-weight: 500;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
+
+        .send-btn:hover, .file-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+        }
+
         #status {
             padding: 10px;
             text-align: center;
@@ -98,12 +179,110 @@
             font-size: 13px;
             background-color: #f1f3f4;
         }
+
+        .file-message .timer {
+            font-size: 12px;
+            color: #ea4335;
+            margin-left: 8px;
+        }
+
+        .recall-btn, .annotate-btn {
+            background: #ea4335;
+            color: white;
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: transform 0.2s ease;
+        }
+
+        .annotate-btn {
+            background: #34c759;
+        }
+
+        .recall-btn:hover, .annotate-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .file-options-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            width: 300px;
+        }
+
+        .file-options-panel h3 {
+            margin: 0;
+            font-size: 16px;
+            color: #1a73e8;
+        }
+
+        .file-options-panel label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .file-options-panel select, .file-options-panel input {
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            background-color: #f9f9f9;
+            width: 100%;
+        }
+
+        .file-options-panel button {
+            background: linear-gradient(135deg, #1a73e8, #185abc);
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .file-options-panel button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+        }
+
+        .thumbnail {
+            max-width: 50px;
+            max-height: 50px;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .read-receipt {
+            font-size: 10px;
+            color: #34c759;
+            margin-left: 8px;
+        }
+
+        .version-history {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <span>FileSync Pro</span>
+            <span class="logo">FileSync Pro</span> <!-- Replace with custom logo via branding -->
             <span class="status-dot"></span>
         </div>
         <div class="chat-area" id="chatArea"></div>
@@ -113,33 +292,91 @@
                 <input type="text" id="textInput" placeholder="Type your message here..." onkeydown="if(event.key === 'Enter') sendText()">
                 <button class="send-btn" onclick="sendText()">Send</button>
             </div>
+            <div class="file-input-row">
+                <button class="file-btn" onclick="document.getElementById('fileInput').click()">Send File</button>
+                <input type="file" id="fileInput" onchange="showFileOptions()">
+            </div>
         </div>
+    </div>
+
+    <div class="file-options-panel" id="fileOptionsPanel">
+        <h3>File Options</h3>
+        <label>Mode:</label>
+        <select id="fileMode">
+            <option value="download">Download</option>
+            <option value="view">View Only</option>
+        </select>
+        <label>Delete Mode:</label>
+        <select id="deleteMode">
+            <option value="none">No Auto-Delete</option>
+            <option value="once">Delete After View</option>
+            <option value="time">Delete After Time</option>
+        </select>
+        <label>Expiration Time (seconds):</label>
+        <input type="number" id="deleteTime" min="1" placeholder="Time (s)" value="10">
+        <label>Encrypt File:</label>
+        <input type="checkbox" id="encryptFile">
+        <label>Session Expiration (minutes):</label>
+        <input type="number" id="sessionTime" min="1" placeholder="Session Time (m)">
+        <label>Version Number (optional):</label>
+        <input type="number" id="versionNumber" min="1" placeholder="Version">
+        <button onclick="sendFileWithOptions()">Send</button>
     </div>
 
     <script>
         const chatArea = document.getElementById('chatArea');
+        const fileInput = document.getElementById('fileInput');
         const textInput = document.getElementById('textInput');
+        const fileOptionsPanel = document.getElementById('fileOptionsPanel');
+        const fileMode = document.getElementById('fileMode');
+        const deleteMode = document.getElementById('deleteMode');
+        const deleteTime = document.getElementById('deleteTime');
+        const encryptFile = document.getElementById('encryptFile');
+        const sessionTime = document.getElementById('sessionTime');
+        const versionNumber = document.getElementById('versionNumber');
         const status = document.getElementById('status');
         const statusDot = document.querySelector('.status-dot');
         let socket;
+        let messageIdCounter = 0;
+        let selectedFile = null;
+        let fileVersions = {}; // Store file versions
 
-        function initSocket() {
+        // Connect to WebSocket server
+        function connectWebSocket() {
             socket = new WebSocket('wss://file-transfer-server.onrender.com');
+
             socket.onopen = () => {
-                status.textContent = 'Connected to server';
+                status.textContent = 'Connected securely';
                 statusDot.style.backgroundColor = '#34c759';
                 console.log('WebSocket connected');
             };
+
             socket.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.text) {
-                    displayTextMessage(data.text, false);
+                const messageData = event.data.toString('utf8');
+                console.log('Raw data received:', messageData);
+                try {
+                    const data = JSON.parse(messageData);
+                    console.log('Parsed data:', data);
+                    if (data.text) {
+                        displayTextMessage(data.text, false);
+                    } else if (data.fileName) {
+                        displayFileMessage(data, false);
+                    } else if (data.recallId) {
+                        recallMessage(data.recallId);
+                    } else if (data.annotation) {
+                        displayAnnotation(data);
+                    }
+                } catch (error) {
+                    console.log('Parse error:', error);
                 }
             };
+
             socket.onclose = () => {
                 status.textContent = 'Disconnected from server';
                 statusDot.style.backgroundColor = '#ea4335';
+                console.log('WebSocket disconnected');
             };
+
             socket.onerror = (error) => {
                 status.textContent = 'Connection error';
                 statusDot.style.backgroundColor = '#ea4335';
@@ -147,16 +384,79 @@
             };
         }
 
+        // Send text message
         function sendText() {
             const text = textInput.value.trim();
-            if (text && socket && socket.readyState === WebSocket.OPEN) {
+            if (text) {
                 const textData = { text: text };
-                socket.send(JSON.stringify(textData));
+                const jsonString = JSON.stringify(textData);
+                console.log('Sending text:', jsonString);
+                socket.send(jsonString);
                 displayTextMessage(text, true);
                 textInput.value = '';
             }
         }
 
+        // Show file options panel
+        function showFileOptions() {
+            selectedFile = fileInput.files[0];
+            if (selectedFile) {
+                fileOptionsPanel.style.display = 'flex';
+            }
+        }
+
+        // Simple encryption (for demo purposes)
+        function encryptContent(content) {
+            return btoa(content); // Base64 encode as a placeholder
+        }
+
+        function decryptContent(encryptedContent) {
+            return atob(encryptedContent);
+        }
+
+        // Send file with options
+        function sendFileWithOptions() {
+            if (selectedFile) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const messageId = messageIdCounter++;
+                    const fileContent = e.target.result;
+                    const encryptedContent = encryptFile.checked ? encryptContent(fileContent.split(',')[1]) : fileContent;
+                    const sessionExpiry = sessionTime.value ? parseInt(sessionTime.value) * 60 * 1000 : null;
+                    const fileData = {
+                        fileName: selectedFile.name,
+                        fileSize: selectedFile.size,
+                        fileContent: encryptedContent,
+                        mode: fileMode.value,
+                        deleteMode: deleteMode.value,
+                        deleteTime: deleteMode.value === 'time' ? (parseInt(deleteTime.value) || 10) * 1000 : null,
+                        messageId: messageId,
+                        encrypted: encryptFile.checked,
+                        sessionTime: sessionExpiry,
+                        version: versionNumber.value || null
+                    };
+
+                    socket.send(JSON.stringify(fileData));
+                    displayFileMessage(fileData, true);
+
+                    if (sessionExpiry) {
+                        setTimeout(() => {
+                            chatArea.innerHTML = '';
+                            console.log('Chat session expired and wiped');
+                        }, sessionExpiry);
+                    }
+
+                    fileOptionsPanel.style.display = 'none';
+                    fileInput.value = '';
+                    sessionTime.value = '';
+                    versionNumber.value = '';
+                    selectedFile = null;
+                };
+                reader.readAsDataURL(selectedFile);
+            }
+        }
+
+        // Display text message
         function displayTextMessage(text, isSent) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message');
@@ -166,7 +466,161 @@
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
-        initSocket();
+        // Display file message with unique features
+        function displayFileMessage(data, isSent) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', 'file-message');
+            messageDiv.classList.add(isSent ? 'sent' : 'received');
+            messageDiv.dataset.messageId = data.messageId;
+            const sizeKB = (data.fileSize / 1024).toFixed(2);
+            const fileContent = data.encrypted ? `data:${data.fileName.split('.').pop()};base64,${decryptContent(data.fileContent)}` : data.fileContent;
+
+            const content = document.createElement('span');
+            const actionHandler = () => {
+                if (data.encrypted) {
+                    alert('File is encrypted. Use the one-time decryption key provided by sender.');
+                }
+                if (data.mode === 'download') {
+                    window.location.href = fileContent;
+                } else {
+                    showPreview(fileContent, data.fileName);
+                }
+            };
+
+            if (data.mode === 'download') {
+                const link = document.createElement('a');
+                link.classList.add('file-link');
+                link.textContent = `${data.fileName} (${sizeKB} KB)${data.encrypted ? ' 🔐' : ''}`;
+                link.onclick = (e) => { e.preventDefault(); actionHandler(); };
+                content.appendChild(link);
+            } else if (data.mode === 'view') {
+                content.classList.add('view-link');
+                content.textContent = `${data.fileName} (${sizeKB} KB)${data.encrypted ? ' 🔐' : ''}`;
+                content.onclick = actionHandler;
+                const thumbnail = document.createElement('img');
+                thumbnail.classList.add('thumbnail');
+                thumbnail.src = data.fileName.endsWith('.txt') ? 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h6v6h6v10H6z"/></svg>' : fileContent;
+                content.appendChild(thumbnail);
+            }
+
+            const timer = document.createElement('span');
+            timer.classList.add('timer');
+            messageDiv.appendChild(content);
+            messageDiv.appendChild(timer);
+
+            if (data.version) {
+                const versionSpan = document.createElement('span');
+                versionSpan.classList.add('version-history');
+                versionSpan.textContent = `Version ${data.version}`;
+                if (!fileVersions[data.fileName]) fileVersions[data.fileName] = [];
+                fileVersions[data.fileName].push({ version: data.version, messageId: data.messageId });
+                if (fileVersions[data.fileName].length > 1) {
+                    versionSpan.textContent += ` (Previous: ${fileVersions[data.fileName].map(v => `v${v.version}`).join(', ')})`;
+                }
+                messageDiv.appendChild(versionSpan);
+            }
+
+            if (data.deleteMode === 'time' && data.deleteTime) {
+                let timeLeft = data.deleteTime;
+                timer.textContent = ` (Expires in ${Math.floor(timeLeft / 1000)}s)`;
+                const countdown = setInterval(() => {
+                    timeLeft -= 1000;
+                    if (timeLeft >= 0 && messageDiv.parentNode) {
+                        timer.textContent = ` (Expires in ${Math.floor(timeLeft / 1000)}s)`;
+                    } else if (messageDiv.parentNode) {
+                        clearInterval(countdown);
+                        messageDiv.style.animation = 'fadeOut 0.5s ease forwards';
+                        setTimeout(() => removeMessage(messageDiv, data.fileName), 500);
+                    }
+                }, 1000);
+            } else if (data.deleteMode === 'once') {
+                timer.textContent = ` (View Once)`;
+            }
+
+            if (isSent) {
+                const recallBtn = document.createElement('button');
+                recallBtn.classList.add('recall-btn');
+                recallBtn.textContent = 'Recall';
+                recallBtn.onclick = () => {
+                    if (data.deleteMode === 'time') clearInterval(countdown);
+                    recallMessage(data.messageId);
+                    messageDiv.style.animation = 'fadeOut 0.5s ease forwards';
+                    setTimeout(() => removeMessage(messageDiv, data.fileName), 500);
+                };
+                messageDiv.appendChild(recallBtn);
+            } else if (data.mode === 'view' && (data.fileName.endsWith('.jpg') || data.fileName.endsWith('.pdf'))) {
+                const annotateBtn = document.createElement('button');
+                annotateBtn.classList.add('annotate-btn');
+                annotateBtn.textContent = 'Annotate';
+                annotateBtn.onclick = () => annotateFile(fileContent, data.fileName, data.messageId);
+                messageDiv.appendChild(annotateBtn);
+            }
+
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // Show file preview (view only)
+        function showPreview(fileContent, fileName) {
+            const previewWindow = window.open('', '_blank');
+            if (fileName.endsWith('.txt')) {
+                const text = atob(fileContent.split(',')[1]);
+                previewWindow.document.write(`<pre>${text}</pre>`);
+            } else {
+                previewWindow.document.write(`<img src="${fileContent}" style="max-width: 100%;">`);
+            }
+            previewWindow.document.title = fileName;
+        }
+
+        // Annotate file
+        function annotateFile(fileContent, fileName, messageId) {
+            const annotation = prompt('Add your annotation:');
+            if (annotation) {
+                const annotationData = { annotation, fileName, messageId };
+                socket.send(JSON.stringify(annotationData));
+                displayAnnotation(annotationData);
+            }
+        }
+
+        // Display annotation
+        function displayAnnotation(data) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', isSent ? 'sent' : 'received');
+            messageDiv.textContent = `Annotation for ${data.fileName}: ${data.annotation}`;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // Remove message from chat
+        function removeMessage(messageDiv, fileName) {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+                console.log(`Deleted file message: ${fileName}`);
+            }
+        }
+
+        // Recall message
+        function recallMessage(messageId) {
+            const recallData = { recallId: messageId };
+            socket.send(JSON.stringify(recallData));
+            const messages = chatArea.querySelectorAll(`[data-message-id="${messageId}"]`);
+            messages.forEach(msg => {
+                if (msg.parentNode) {
+                    msg.parentNode.removeChild(msg);
+                    console.log(`Recalled message ID: ${messageId}`);
+                }
+            });
+        }
+
+        // Apply custom branding (example)
+        function applyBranding() {
+            document.querySelector('.header').style.background = 'linear-gradient(135deg, #ff5733, #c70039)'; // Example company color
+            document.querySelector('.logo').textContent = 'YourCompany Sync'; // Example company name
+        }
+
+        // Start WebSocket connection and apply branding
+        connectWebSocket();
+        applyBranding();
     </script>
 </body>
 </html>
